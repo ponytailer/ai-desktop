@@ -959,6 +959,53 @@ h1.page-title {
 }
 .btn-soft:hover { background: #EFF6FF; }
 
+/* === Skill 安装弹窗 === */
+.install-body { display: flex; flex-direction: column; gap: 10px; }
+.install-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: white;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .05s;
+}
+.install-option:hover { border-color: var(--accent-blue); background: #F8FAFF; }
+.install-option:active { transform: scale(.995); }
+.install-option .io-ico { font-size: 20px; flex: 0 0 auto; }
+.install-option .io-text { display: flex; flex-direction: column; gap: 2px; }
+.install-option .io-text b { font-size: 14px; color: var(--ink-1); }
+.install-option .io-text small { font-size: 12px; color: var(--ink-3); }
+
+.install-confirm {
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #FFFBEB;
+  border: 1px solid #FCD34D;
+}
+.install-confirm-head { font-size: 13px; color: #92400E; margin-bottom: 8px; }
+.install-path {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 13px;
+  color: #1F2937;
+  background: white;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
+  padding: 10px 12px;
+  word-break: break-all;
+}
+.install-confirm-note {
+  font-size: 12px;
+  color: #B45309;
+  margin: 10px 0 12px;
+}
+.install-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
 /* 批量改配额提示条：醒目但不刺眼 */
 .batch-quota-notice {
   display: flex;

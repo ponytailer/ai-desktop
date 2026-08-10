@@ -1,4 +1,4 @@
-# AI Desktop — 企业 AI Skill 共享与管理平台
+# AI Desktop
 
 ---------------
 

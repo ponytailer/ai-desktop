@@ -46,9 +46,9 @@
     <span class="publish-date">📦 {{ (v.decided_at or v.submitted_at).strftime('%Y-%m-%d') }} 上架</span>
     <div class="footer-actions">
       <button class="btn btn-ghost" data-skill-detail="{{ v.id }}">详情</button>
-      <a class="btn btn-ghost" href="/api/skills/{{ v.id }}/download" download data-card-download="{{ v.id }}">
+      <button class="btn btn-ghost" data-skill-install="{{ v.id }}" data-skill-name="{{ s.name }}">
         <span>↳</span> 安装
-      </a>
+      </button>
     </div>
   </div>
 </article>

@@ -1,8 +1,10 @@
 """Skills 提交 / 上传 / 下载 API。"""
 from __future__ import annotations
 
+import os
 import re
 import shutil
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -76,6 +78,72 @@ def _bump_version(current: str) -> str:
         nums.append(0)
     nums[2] += 1
     return ".".join(str(n) for n in nums)
+
+
+def _common_top_dir(names: list[str]) -> str | None:
+    """若 zip 内所有条目都共享同一顶层目录（如 my-skill/...），返回该顶层名；否则 None。"""
+    tops: set[str] = set()
+    for n in names:
+        n = n.lstrip("/")
+        if not n or n.endswith("/"):
+            continue
+        first = n.split("/", 1)[0]
+        if first:
+            tops.add(first)
+        if len(tops) > 1:
+            return None
+    if len(tops) == 1:
+        return next(iter(tops))
+    return None
+
+
+def _extract_skill_zip(zip_path: Path, dest_dir: Path) -> int:
+    """把 skill zip 智能解压到 dest_dir：
+
+    - 若 zip 内所有条目共享同一顶层目录，则解开该层（避免 my-skill/my-skill/ 嵌套）
+    - 防 zip-slip：任何条目解析后不得逃出 dest_dir
+    返回写入的文件数。
+    """
+    dest_dir = dest_dir.resolve()
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(zip_path) as zf:
+        names = zf.namelist()
+        # 安全校验：禁止路径穿越
+        for n in names:
+            target = (dest_dir / n).resolve()
+            if target != dest_dir and not str(target).startswith(str(dest_dir) + os.sep):
+                raise HTTPException(400, f"zip 含非法路径：{n}")
+        top = _common_top_dir(names)
+        top_prefix = (top + "/") if top else ""
+        count = 0
+        for n in names:
+            if top and n.startswith(top_prefix):
+                rel = n[len(top_prefix):]
+            else:
+                rel = n
+            rel = rel.lstrip("/")
+            if not rel:
+                continue
+            target = (dest_dir / rel).resolve()
+            if n.endswith("/"):
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(n) as src, open(target, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+            count += 1
+    return count
+
+
+def _install_target_dir(target: str, skill_name: str) -> Path:
+    """根据 target 计算本地 skills 安装目录。"""
+    if target == "workbuddy":
+        base = Path.home() / ".workbuddy" / "skills"
+    elif target == "claudecode":
+        base = Path.home() / ".claude" / "skills"
+    else:
+        raise HTTPException(400, "未知的 install target")
+    return base / _sanitize_segment(skill_name, fallback="skill")
 
 
 def _write_placeholder_zip(zip_path: Path, skill_name: str, version: str,
@@ -282,6 +350,46 @@ def download_attachment(version_id: int, db: Session = Depends(get_db)):
         media_type="application/zip",
         filename=f"{_sanitize_segment(v.skill.name)}-{_sanitize_segment(v.version)}.zip",
     )
+
+
+@router.post("/api/skills/{version_id}/install")
+def install_skill(version_id: int, target: str = Form(...),
+    db: Session = Depends(get_db)):
+    """安装 skill 到本地 skills 目录（WorkBuddy / Claude Code）。
+
+    - target=workbuddy → ~/.workbuddy/skills/{name}
+    - target=claudecode → ~/.claude/skills/{name}
+    解压采用智能去顶层目录，返回目标路径与文件数。
+    """
+    v = db.get(SkillVersion, version_id)
+    if not v:
+        raise HTTPException(404, "version not found")
+    if v.status != STATUS_PUBLISHED:
+        raise HTTPException(403, "当前版本未发布，无法安装")
+    if target not in ("workbuddy", "claudecode"):
+        raise HTTPException(400, "未知的 install target")
+
+    zip_path = _resolve_zip_path(v)
+    if not zip_path:
+        raise HTTPException(404, "附件不存在")
+
+    dest = _install_target_dir(target, v.skill.name)
+    # 已存在同名目录：先整体移除再重新解压，保证幂等（仅限该 skill 子目录）
+    if dest.exists():
+        shutil.rmtree(dest)
+    files = _extract_skill_zip(zip_path, dest)
+
+    # 真实计数：每次安装 +1
+    v.skill.downloads = (v.skill.downloads or 0) + 1
+    db.commit()
+
+    return {
+        "ok": True,
+        "target": target,
+        "path": str(dest),
+        "skill_name": v.skill.name,
+        "files": files,
+    }
 
 
 @router.get("/api/skills/{version_id}/card")
