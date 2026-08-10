@@ -29,21 +29,6 @@
 
 ---
 
-## 技术栈
-
-| 分类 | 技术 |
-| --- | --- |
-| 语言 | Python ≥ 3.12 |
-| Web 框架 | FastAPI |
-| ORM | SQLAlchemy 2.x |
-| 模板 | Jinja2（服务端渲染 HTML） |
-| 表单 / 上传 | python-multipart |
-| 服务器 | Uvicorn（`uvicorn[standard]`） |
-| 数据库 | SQLite（文件型，零运维） |
-| 其他依赖 | `requests`、`ipython`、`alibabacloud-computenest20210601`（预留云集成） |
-
----
-
 ## 快速开始
 
 ### 环境要求
@@ -81,18 +66,6 @@ uv run python -m ai_desktop.mock_data
 该脚本以 Skill 名称为唯一键幂等注入，包含多版本、密钥申请与员工示例数据，便于演示审核、角色等完整流程。
 
 ---
-
-## 默认账号与角色
-
-项目内置测试账号与演示用户（定义在 `ai_desktop/deps.py`）：
-
-| 工号 | 姓名 | 角色 |
-| --- | --- | --- |
-| `admin` / `admin` | 管理员 | 超级管理员（`super_admin`） |
-| `10020002` | 李娜 | 密钥管理员（`key_admin`） |
-| `10020003` | 王强 | Skills 管理员（`skills_admin`） |
-
-> 登录方式：用户名 `admin`、密码 `admin`。（注意：当前为演示用硬编码账号，生产环境需接入真实身份认证。）
 
 ### 角色与权限
 
