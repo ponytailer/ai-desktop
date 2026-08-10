@@ -6,25 +6,24 @@
 from __future__ import annotations
 
 import io
-import json
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from .database import SessionLocal
+from .deps import CURRENT_USER  # 当前登录用户，对应截图中的「管理员 48890023」
 from .models import (
-    Skill,
-    SkillVersion,
-    Category,
     CATEGORY_OPTIONS,
+    SCOPE_DEPARTMENT,
+    SCOPE_PUBLIC,
     STATUS_DRAFT,
     STATUS_PENDING,
     STATUS_PUBLISHED,
     STATUS_REJECTED,
-    SCOPE_PUBLIC,
-    SCOPE_DEPARTMENT,
+    Category,
+    Skill,
+    SkillVersion,
 )
-from .deps import CURRENT_USER  # 当前登录用户，对应截图中的「管理员 48890023」
 
 ATTACHMENT_DIR = Path(__file__).resolve().parent.parent / "data" / "attachments"
 
@@ -158,7 +157,6 @@ def seed_if_empty() -> None:
             owner_team: str,
             downloads: int,
             likes: int,
-            rating: float,
             featured: bool,
         ) -> Skill:
             s = Skill(
@@ -171,7 +169,6 @@ def seed_if_empty() -> None:
                 owner_team=owner_team,
                 downloads=downloads,
                 likes=likes,
-                rating=rating,
                 is_featured=featured,
             )
             db.add(s)
@@ -185,7 +182,7 @@ def seed_if_empty() -> None:
             "Code Review Companion", "</>", "#5B6CFF",
             "自动检查变更风险，生成结构化评审意见与可执行建议。",
             "代码质量", "林远", "研发平台",
-            downloads=1286, likes=86, rating=4.9, featured=True,
+            downloads=1286, likes=86, featured=True,
         )
         add_skill_version(
             cr, "v2.4.1", STATUS_PUBLISHED,
@@ -205,7 +202,7 @@ def seed_if_empty() -> None:
             "SQL Insight", "📈", "#3F66FF",
             "把自然语言业务问题转成可审阅的 SQL 与分析摘要。",
             "数据与分析", "周宁", "数据智能",
-            downloads=963, likes=64, rating=4.8, featured=True,
+            downloads=963, likes=64, featured=True,
         )
         add_skill_version(
             si, "v1.8.0", STATUS_PUBLISHED,
@@ -225,7 +222,7 @@ def seed_if_empty() -> None:
             "Meeting Brief", "💬", "#0D9488",
             "从会议材料中整理议题、决策与待办事项。",
             "会议与协作", "陈晨", "总经办",
-            downloads=742, likes=58, rating=4.7, featured=True,
+            downloads=742, likes=58, featured=True,
         )
         add_skill_version(
             mb, "v3.1.0", STATUS_PUBLISHED,
@@ -239,7 +236,7 @@ def seed_if_empty() -> None:
             "Campaign Writer", "📣", "#F97316",
             "基于产品定位生成多渠道营销文案，并给出 A/B 测试建议。",
             "运营增长", "顾潇", "市场中心",
-            downloads=531, likes=41, rating=4.6, featured=False,
+            downloads=531, likes=41, featured=False,
         )
         add_skill_version(
             cw, "v1.5.2", STATUS_PUBLISHED,
@@ -253,7 +250,7 @@ def seed_if_empty() -> None:
             "Customer Signal", "🛎", "#7C3AED",
             "汇总客服与工单反馈，识别客户紧急信号与产品改进点。",
             "客服与支持", "苏蕊", "客户成功",
-            downloads=489, likes=37, rating=4.5, featured=False,
+            downloads=489, likes=37, featured=False,
         )
         add_skill_version(
             cs, "v2.0.0", STATUS_PUBLISHED,
@@ -267,7 +264,7 @@ def seed_if_empty() -> None:
             "Security Gate", "🛡", "#E11D48",
             "扫描依赖与代码中的已知漏洞并产出可执行的修复 patch。",
             "安全合规", "邓岩", "安全工程",
-            downloads=317, likes=29, rating=4.6, featured=False,
+            downloads=317, likes=29, featured=False,
         )
         add_skill_version(
             sg, "v1.3.4", STATUS_PUBLISHED,
@@ -281,7 +278,7 @@ def seed_if_empty() -> None:
             "Incident Update", "🚨", "#DC2626",
             "首个可用版本，包含管理层、客户与内部三类通报模板。",
             "研发工具", "赵可", "SRE",
-            downloads=0, likes=0, rating=0.0, featured=False,
+            downloads=0, likes=0, featured=False,
         )
         add_skill_version(
             iu, "v0.9.0", STATUS_PENDING,
@@ -295,7 +292,7 @@ def seed_if_empty() -> None:
             "Knowledge Finder", "📚", "#0EA5E9",
             "改进部门知识检索并增加来源时效检查。",
             "业务运营", "顾潇", "知识中台",
-            downloads=210, likes=15, rating=4.5, featured=True,
+            downloads=210, likes=15, featured=True,
         )
         # v0.8.1 已通过 公开 —— 截图里挂在「我的上传」
         add_skill_version(

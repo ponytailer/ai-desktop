@@ -3,15 +3,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Employee, Skill, SkillVersion, ApiKey, STATUS_PENDING, STATUS_PUBLISHED, KEY_PENDING, KEY_APPROVED, KEY_REJECTED, KEY_REVOKED
-from ..deps import ROLE_SUPER_ADMIN, ROLE_SKILLS_ADMIN, ROLE_KEY_ADMIN, ALL_ROLES, CurrentUser
+from ..deps import ALL_ROLES, ROLE_KEY_ADMIN, ROLE_SKILLS_ADMIN, ROLE_SUPER_ADMIN, CurrentUser
+from ..models import (
+    KEY_APPROVED,
+    KEY_PENDING,
+    KEY_REJECTED,
+    KEY_REVOKED,
+    STATUS_PENDING,
+    STATUS_PUBLISHED,
+    ApiKey,
+    Employee,
+    Skill,
+    SkillVersion,
+)
 
 router = APIRouter()
 
@@ -96,8 +107,13 @@ def admin_skill_reviews(request: Request, db: Session = Depends(get_db)):
     )
     counts = {
         "pending": len(pending),
-        "published": db.query(Skill).filter(Skill.versions.any(SkillVersion.status == STATUS_PUBLISHED)).count(),
-        "teams": db.query(Skill).filter(Skill.owner_team.isnot(None)).distinct(Skill.owner_team).count(),
+        "published": db.query(Skill)
+        .filter(Skill.versions.any(SkillVersion.status == STATUS_PUBLISHED))
+        .count(),
+        "teams": db.query(Skill)
+        .filter(Skill.owner_team.isnot(None))
+        .distinct(Skill.owner_team)
+        .count(),
     }
 
     return templates.TemplateResponse(

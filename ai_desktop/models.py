@@ -11,13 +11,11 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import String, Integer, DateTime, Text, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
-
 
 # ---------- 常量（业务状态 / 枚举替代品）----------
 
@@ -68,7 +66,7 @@ class Skill(Base):
     is_featured: Mapped[bool] = mapped_column(default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    versions: Mapped[list["SkillVersion"]] = relationship(
+    versions: Mapped[list[SkillVersion]] = relationship(
         back_populates="skill",
         cascade="all, delete-orphan",
         order_by="SkillVersion.created_at.desc()",
@@ -76,7 +74,7 @@ class Skill(Base):
 
     # ---------- 便捷属性 ----------
     @property
-    def published_version(self) -> Optional["SkillVersion"]:
+    def published_version(self) -> SkillVersion | None:
         for v in self.versions:
             if v.status == STATUS_PUBLISHED:
                 return v
@@ -107,7 +105,8 @@ class SkillVersion(Base):
     skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id", ondelete="CASCADE"))
     version: Mapped[str] = mapped_column(String(40), default="1.0.0")
     summary: Mapped[str] = mapped_column(String(400), default="")  # 一句话简介
-    detail: Mapped[str] = mapped_column(Text, default="")  # 详细说明（输入 / 流程 / 输出 / 适用边界）
+    # 详细说明（输入 / 流程 / 输出 / 适用边界）
+    detail: Mapped[str] = mapped_column(Text, default="")
     changelog: Mapped[str] = mapped_column(Text, default="")  # 本版本的版本说明
 
     scope: Mapped[str] = mapped_column(String(20), default=SCOPE_PUBLIC)
@@ -117,14 +116,14 @@ class SkillVersion(Base):
     _tags: Mapped[str] = mapped_column("tags", String(800), default="[]")
 
     # 附件 zip 本地路径（相对于附件根目录）
-    attachment_path: Mapped[Optional[str]] = mapped_column(String(400), nullable=True)
+    attachment_path: Mapped[str | None] = mapped_column(String(400), nullable=True)
     attachment_size: Mapped[int] = mapped_column(Integer, default=0)  # 字节
 
     submitted_by: Mapped[str] = mapped_column(String(80), default="")
     submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    decided_by: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
-    decided_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    decision_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     featured_badge: Mapped[bool] = mapped_column(default=False, server_default="0")
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -191,11 +190,11 @@ class ApiKey(Base):
     status: Mapped[str] = mapped_column(String(20), default=KEY_PENDING, index=True)
 
     # 分配的密钥值（approved 后填充，格式如 sk-xxxxxxxxxxxx）
-    api_key_value: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    api_key_value: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
-    reviewed_by: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
-    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    review_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

@@ -1,7 +1,7 @@
 [project]
 name = "ai-desktop"
 version = "0.1.0"
-description = "Add your description here"
+description = "企业 AI Skill 共享与管理平台 (SkillHub)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -13,4 +13,31 @@ dependencies = [
     "requests>=2.34.2",
     "sqlalchemy>=2.0.25",
     "uvicorn[standard]>=0.27.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "C4"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"ai_desktop/__init__.py" = ["F401"]
+"ai_desktop/routers/__init__.py" = ["F401"]
+"ai_desktop/routers/*.py" = ["B008"]
+"ai_desktop/seed.py" = ["E501"]
+"ai_desktop/mock_data.py" = ["E501"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ai_desktop"]
+
+[tool.uv]
+dev-dependencies = [
+    "ruff>=0.16.2",
 ]

@@ -2,40 +2,38 @@
 
 幂等：以 skill.name 为唯一键，已存在则跳过。
 执行方式：
-    cd /Users/hs/work/skill-manager
-    .venv/bin/python -m skill_hub.app.mock_data
+    cd /Users/hs/work/ai-desktop
+    .venv/bin/python -m ai_desktop.mock_data
 """
 from __future__ import annotations
 
 import io
 import zipfile
 from datetime import datetime, timedelta
-from pathlib import Path
 
 from .database import DATA_DIR, SessionLocal
-
-ATTACHMENT_DIR = DATA_DIR / "attachments"
+from .deps import CURRENT_USER, ROLE_KEY_ADMIN, ROLE_SKILLS_ADMIN, ROLE_SUPER_ADMIN
 from .models import (
-    Skill,
-    SkillVersion,
-    Category,
     CATEGORY_OPTIONS,
+    KEY_APPROVED,
+    KEY_PENDING,
+    KEY_REJECTED,
+    KEY_REVOKED,
+    SCOPE_DEPARTMENT,
+    SCOPE_PUBLIC,
     STATUS_DRAFT,
     STATUS_PENDING,
     STATUS_PUBLISHED,
     STATUS_REJECTED,
     STATUS_SUPERSEDED,
-    SCOPE_PUBLIC,
-    SCOPE_DEPARTMENT,
     ApiKey,
-    KEY_PENDING,
-    KEY_APPROVED,
-    KEY_REJECTED,
-    KEY_REVOKED,
+    Category,
     Employee,
+    Skill,
+    SkillVersion,
 )
-from .deps import CURRENT_USER, ROLE_SKILLS_ADMIN, ROLE_KEY_ADMIN, ROLE_SUPER_ADMIN
 
+ATTACHMENT_DIR = DATA_DIR / "attachments"
 
 # ---------- 工具 ----------
 

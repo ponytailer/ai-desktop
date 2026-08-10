@@ -4,14 +4,22 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Skill, SkillVersion, Category, ApiKey, STATUS_PUBLISHED, STATUS_PENDING, KEY_PENDING
-from ..deps import ROLE_SKILLS_ADMIN, ROLE_SUPER_ADMIN, ROLE_KEY_ADMIN, CurrentUser
+from ..deps import ROLE_SKILLS_ADMIN, CurrentUser
+from ..models import (
+    KEY_PENDING,
+    STATUS_PENDING,
+    STATUS_PUBLISHED,
+    ApiKey,
+    Category,
+    Skill,
+    SkillVersion,
+)
 
 router = APIRouter()
 

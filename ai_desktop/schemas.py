@@ -1,9 +1,9 @@
 """Pydantic schemas（表单校验用）。"""
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from .models import SCOPE_PUBLIC
 
@@ -22,5 +22,5 @@ class NewSkillSubmission(BaseModel):
 
 class ReviewDecision(BaseModel):
     decision: Literal["approve", "reject"]
-    note: Optional[str] = None
+    note: str | None = None
     feature_badge: bool = False

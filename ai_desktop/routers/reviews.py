@@ -2,21 +2,18 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Form, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..deps import CurrentUser
 from ..models import (
-    Skill,
-    SkillVersion,
     STATUS_PENDING,
     STATUS_PUBLISHED,
     STATUS_REJECTED,
+    SkillVersion,
 )
-from ..deps import CurrentUser
 
 router = APIRouter()
 

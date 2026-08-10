@@ -10,8 +10,8 @@ from __future__ import annotations
 import hashlib
 import hmac
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Optional
 
 # ---------- 角色常量 ----------
 
@@ -62,7 +62,9 @@ DEMO_USERS = {
     "48890023": CURRENT_USER,
     "10020001": CurrentUser(id="10020001", name="张伟", avatar_label="10", roles=()),
     "10020002": CurrentUser(id="10020002", name="李娜", avatar_label="10", roles=(ROLE_KEY_ADMIN,)),
-    "10020003": CurrentUser(id="10020003", name="王强", avatar_label="10", roles=(ROLE_SKILLS_ADMIN,)),
+    "10020003": CurrentUser(
+        id="10020003", name="王强", avatar_label="10", roles=(ROLE_SKILLS_ADMIN,)
+    ),
 }
 
 
@@ -86,7 +88,7 @@ def create_session_token(user_id: str, max_age: int = SESSION_MAX_AGE) -> str:
     return f"{payload}:{sig}"
 
 
-def verify_session_token(token: str) -> Optional[CurrentUser]:
+def verify_session_token(token: str) -> CurrentUser | None:
     """验证会话 token，返回 CurrentUser 或 None。"""
     if not token:
         return None
@@ -109,7 +111,7 @@ def verify_session_token(token: str) -> Optional[CurrentUser]:
     return _lookup_user(user_id)
 
 
-def _lookup_user(user_id: str) -> Optional[CurrentUser]:
+def _lookup_user(user_id: str) -> CurrentUser | None:
     """根据 user_id 查找 CurrentUser。"""
     if user_id in DEMO_USERS:
         return DEMO_USERS[user_id]

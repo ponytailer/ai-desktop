@@ -5,22 +5,20 @@ import re
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, \
-    Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import CurrentUser
 from ..models import (
-    Skill,
-    SkillVersion,
     SCOPE_PUBLIC,
     STATUS_DRAFT,
     STATUS_PENDING,
     STATUS_PUBLISHED,
+    Skill,
+    SkillVersion,
 )
 
 router = APIRouter()
@@ -47,7 +45,7 @@ def _split_tags(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()][:8]
 
 
-def _read_attachment_size(p: Optional[Path]) -> int:
+def _read_attachment_size(p: Path | None) -> int:
     if not p:
         return 0
     try:
@@ -56,7 +54,7 @@ def _read_attachment_size(p: Optional[Path]) -> int:
         return 0
 
 
-def _resolve_zip_path(version: SkillVersion) -> Optional[Path]:
+def _resolve_zip_path(version: SkillVersion) -> Path | None:
     if not version.attachment_path:
         return None
     p = (DATA_ROOT / version.attachment_path).resolve()
@@ -82,7 +80,8 @@ def _bump_version(current: str) -> str:
 
 def _write_placeholder_zip(zip_path: Path, skill_name: str, version: str,
     summary: str) -> None:
-    import io, zipfile
+    import io
+    import zipfile
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr(

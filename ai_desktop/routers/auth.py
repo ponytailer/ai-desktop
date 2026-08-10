@@ -8,9 +8,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from ..deps import (
-    TEST_ACCOUNTS,
     SESSION_COOKIE_NAME,
     SESSION_MAX_AGE,
+    TEST_ACCOUNTS,
     create_session_token,
     verify_session_token,
 )

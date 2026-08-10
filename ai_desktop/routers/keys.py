@@ -4,16 +4,23 @@ from __future__ import annotations
 import secrets
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import ApiKey, KEY_PENDING, KEY_APPROVED, KEY_REJECTED, KEY_REVOKED, SkillVersion, STATUS_PENDING
-from ..deps import ROLE_KEY_ADMIN, ROLE_SUPER_ADMIN, ROLE_SKILLS_ADMIN, DEMO_USERS, CurrentUser
+from ..deps import ROLE_KEY_ADMIN, ROLE_SKILLS_ADMIN, ROLE_SUPER_ADMIN, CurrentUser
+from ..models import (
+    KEY_APPROVED,
+    KEY_PENDING,
+    KEY_REJECTED,
+    KEY_REVOKED,
+    STATUS_PENDING,
+    ApiKey,
+    SkillVersion,
+)
 
 router = APIRouter()
 
@@ -56,7 +63,11 @@ def keys_page(request: Request, db: Session = Depends(get_db)):
     has_active_key = any(k.status == KEY_APPROVED for k in my_keys)
 
     # 当前用户是否具有任何管理角色（用于显示跳转提示）
-    user_has_admin_role = user.has_role(ROLE_KEY_ADMIN) or user.has_role(ROLE_SUPER_ADMIN) or user.has_role(ROLE_SKILLS_ADMIN)
+    user_has_admin_role = (
+        user.has_role(ROLE_KEY_ADMIN)
+        or user.has_role(ROLE_SUPER_ADMIN)
+        or user.has_role(ROLE_SKILLS_ADMIN)
+    )
 
     pending_skills = db.query(SkillVersion).filter(SkillVersion.status == STATUS_PENDING).count()
     pending_keys = db.query(ApiKey).filter(ApiKey.status == KEY_PENDING).count()

@@ -3,15 +3,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..deps import ROLE_SUPER_ADMIN, CurrentUser
 from ..models import Feedback
-from ..deps import CurrentUser, ROLE_SUPER_ADMIN
 
 router = APIRouter()
 
@@ -62,7 +62,9 @@ def mark_feedback_read(fb_id: int, request: Request, db: Session = Depends(get_d
 
 
 @router.post("/api/feedback/read")
-def mark_feedback_read_batch(body: FeedbackReadBody, request: Request, db: Session = Depends(get_db)):
+def mark_feedback_read_batch(
+    body: FeedbackReadBody, request: Request, db: Session = Depends(get_db)
+):
     """批量标记已读（仅 super_admin）。"""
     user: CurrentUser = request.state.current_user
     if not user.has_role(ROLE_SUPER_ADMIN):

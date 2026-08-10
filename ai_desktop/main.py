@@ -1,7 +1,7 @@
 """FastAPI 入口文件。
 
 启动：
-    .venv/bin/python -m uvicorn skill_hub.app.main:app --reload --port 8001
+    .venv/bin/python -m uvicorn ai_desktop.main:app --reload --port 8001
 """
 from __future__ import annotations
 
@@ -13,13 +13,12 @@ from fastapi.staticfiles import StaticFiles
 
 from .database import init_db
 from .deps import (
-    SESSION_COOKIE_NAME,
-    verify_session_token,
     PUBLIC_PATHS,
     PUBLIC_PREFIXES,
+    SESSION_COOKIE_NAME,
+    verify_session_token,
 )
-from .routers import pages, submissions, reviews, keys, admin, auth, feedback
-
+from .routers import admin, auth, feedback, keys, pages, reviews, submissions
 
 APP_ROOT = Path(__file__).resolve().parent
 
