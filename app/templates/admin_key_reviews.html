@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  {% include "partials/_admin_subnav.html" %}
+
+  <div class="hero-row">
+    <div class="hero-intro">
+      <h1 class="page-title">密钥审核</h1>
+      <p class="page-subtitle">审核员工的 API Key 申请，分配或拒绝密钥。</p>
+    </div>
+
+    <section class="stat-row">
+      <div class="stat-cell"><div class="v" style="color: var(--accent-orange);">{{ pending_review | length }}</div><div class="l">待审核</div></div>
+      <div class="stat-cell"><div class="v" style="color: var(--accent-green);">{{ active_keys | length }}</div><div class="l">已分配</div></div>
+      <div class="stat-cell"><div class="v">{{ reviewed_history | length }}</div><div class="l">审核历史</div></div>
+    </section>
+  </div>
+
+  <div class="tabs-bar" data-tabs>
+    <button class="active" data-tab="key-pending">待审核 <span style="color: var(--accent-orange);">{{ pending_review | length }}</span></button>
+    <button data-tab="key-active">已分配密钥 <span style="color: var(--accent-green);">{{ active_keys | length }}</span></button>
+    <button data-tab="key-history">审核历史</button>
+  </div>
+
+  <section data-tab-panel="key-pending">
+    {% if pending_review %}
+    <table class="review-table">
+      <thead>
+        <tr>
+          <th style="width: 20%;">申请人</th>
+          <th style="width: 34%;">用途</th>
+          <th style="width: 14%;">申请时间</th>
+          <th style="width: 10%;">状态</th>
+          <th style="width: 22%;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="keyPendingBody">
+        {% for k in pending_review %}
+        <tr>
+          <td>
+            <div style="font-weight: 600;">{{ k.applicant_name }}</div>
+            <div class="muted" style="font-size: 12px;">{{ k.applicant_id }}</div>
+          </td>
+          <td>{{ k.purpose }}</td>
+          <td class="muted" style="font-size: 13px;">{{ k.created_at.strftime('%Y-%m-%d') }}</td>
+          <td><span class="status-badge key-pending">{{ k.status_label }}</span></td>
+          <td>
+            <button class="btn-key-approve" data-approve-key="{{ k.id }}">✓ 分配密钥</button>
+            <button class="btn-key-reject" data-reject-key="{{ k.id }}">✕ 拒绝</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="pagination" id="keyPendingPager"></div>
+    {% else %}
+    <div class="muted" style="padding: 40px; text-align: center;">暂无待审核的密钥申请</div>
+    {% endif %}
+  </section>
+
+  <section data-tab-panel="key-active" style="display:none;">
+    {% if active_keys %}
+    <table class="review-table" id="activeKeysTable">
+      <thead>
+        <tr>
+          <th style="width: 16%;">申请人</th>
+          <th style="width: 24%;">用途</th>
+          <th style="width: 20%;">API Key</th>
+          <th style="width: 12%;">分配时间</th>
+          <th style="width: 10%;">分配人</th>
+          <th style="width: 18%;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="keyActiveBody">
+        {% for k in active_keys %}
+        <tr>
+          <td>
+            <div style="font-weight: 600;">{{ k.applicant_name }}</div>
+            <div class="muted" style="font-size: 12px;">{{ k.applicant_id }}</div>
+          </td>
+          <td style="font-size: 13px;">{{ k.purpose }}</td>
+          <td><code class="key-text">{{ k.masked_key }}</code></td>
+          <td class="muted" style="font-size: 13px;">{{ k.reviewed_at.strftime('%Y-%m-%d') if k.reviewed_at else '—' }}</td>
+          <td class="muted" style="font-size: 13px;">{{ k.reviewed_by or '—' }}</td>
+          <td>
+            <button class="btn-revoke" data-revoke="{{ k.id }}" data-applicant="{{ k.applicant_name }}" data-purpose="{{ k.purpose }}">吊销</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="pagination" id="keyActivePager"></div>
+    {% else %}
+    <div class="muted" style="padding: 40px; text-align: center;">暂无已分配的密钥</div>
+    {% endif %}
+  </section>
+
+  <section data-tab-panel="key-history" style="display:none;">
+    <div class="search-bar" style="margin-bottom: 16px;">
+      <input type="text" id="historySearch" placeholder="搜索申请人姓名…" style="width: 100%; max-width: 320px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 13px;">
+    </div>
+    {% if reviewed_history %}
+    <table class="review-table" id="historyTable">
+      <thead>
+        <tr>
+          <th style="width: 16%;">申请人</th>
+          <th style="width: 26%;">用途</th>
+          <th style="width: 22%;">分配的密钥</th>
+          <th style="width: 10%;">状态</th>
+          <th style="width: 12%;">审核人</th>
+          <th style="width: 14%;">审核时间</th>
+        </tr>
+      </thead>
+      <tbody id="keyHistoryBody">
+        {% for k in reviewed_history %}
+        <tr data-applicant="{{ k.applicant_name }}">
+          <td>
+            <div style="font-weight: 600;">{{ k.applicant_name }}</div>
+            <div class="muted" style="font-size: 12px;">{{ k.applicant_id }}</div>
+          </td>
+          <td>{{ k.purpose }}</td>
+          <td>
+            {% if k.api_key_value %}
+              <code class="key-text">{{ k.masked_key }}</code>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          </td>
+          <td><span class="status-badge key-{{ k.status }}">{{ k.status_label }}</span></td>
+          <td class="muted" style="font-size: 13px;">{{ k.reviewed_by or '—' }}</td>
+          <td class="muted" style="font-size: 13px;">{{ k.reviewed_at.strftime('%Y-%m-%d') if k.reviewed_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="pagination" id="keyHistoryPager"></div>
+    {% else %}
+    <div class="muted" style="padding: 40px; text-align: center;">暂无审核历史</div>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+  // 通用表格分页（支持搜索过滤）
+  function initTablePager(bodyId, pagerId, perPage) {
+    const tbody = document.getElementById(bodyId);
+    const pager = document.getElementById(pagerId);
+    if (!tbody || !pager) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    let page = 1;
+    let searchQuery = '';
+
+    function visibleRows() {
+      if (!searchQuery) return rows;
+      return rows.filter((r) => {
+        const name = (r.getAttribute('data-applicant') || '').toLowerCase();
+        return name.includes(searchQuery);
+      });
+    }
+
+    function render() {
+      const vis = visibleRows();
+      const total = vis.length;
+      const totalPages = Math.max(1, Math.ceil(total / perPage));
+      if (page > totalPages) page = totalPages;
+      const start = (page - 1) * perPage;
+      const end = start + perPage;
+
+      rows.forEach((r) => { r.style.display = 'none'; });
+      vis.slice(start, end).forEach((r) => { r.style.display = ''; });
+
+      if (totalPages <= 1) { pager.innerHTML = ''; return; }
+      let html = `<span class="page-info">${total} 条 · 第 ${page}/${totalPages} 页</span>`;
+      html += `<button class="page-btn" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>‹</button>`;
+      pageNums(page, totalPages).forEach((p) => {
+        if (p === '...') html += `<span class="page-dots">…</span>`;
+        else html += `<button class="page-btn ${p === page ? 'is-active' : ''}" data-page="${p}">${p}</button>`;
+      });
+      html += `<button class="page-btn" data-page="${page + 1}" ${page === totalPages ? 'disabled' : ''}>›</button>`;
+      pager.innerHTML = html;
+    }
+
+    function pageNums(cur, total) {
+      const max = 7;
+      if (total <= max) return Array.from({length: total}, (_, i) => i + 1);
+      const pages = [1];
+      const left = Math.max(2, cur - 2);
+      const right = Math.min(total - 1, cur + 2);
+      if (left > 2) pages.push('...');
+      for (let i = left; i <= right; i++) pages.push(i);
+      if (right < total - 1) pages.push('...');
+      pages.push(total);
+      return pages;
+    }
+
+    pager.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-page]');
+      if (!btn || btn.disabled) return;
+      page = parseInt(btn.dataset.page, 10);
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    return {
+      setSearch(q) { searchQuery = q; page = 1; render(); },
+      render,
+    };
+  }
+
+  // Tab 切换
+  (function () {
+    const tabs = document.querySelectorAll('[data-tabs] [data-tab]');
+    const panels = document.querySelectorAll('[data-tab-panel]');
+    tabs.forEach((t) => t.addEventListener('click', () => {
+      tabs.forEach((x) => x.classList.toggle('active', x === t));
+      panels.forEach((p) => {
+        p.style.display = (p.dataset.tabPanel === t.dataset.tab) ? '' : 'none';
+      });
+    }));
+  })();
+
+  // 复制到剪贴板（兼容非 HTTPS 环境）
+  async function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (!ok) throw new Error('copy failed');
+  }
+
+  // 审核通过 - 弹窗
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-approve-key]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-approve-key');
+    const row = btn.closest('tr');
+    const applicant = row.querySelector('td:nth-child(1)')?.innerText?.trim() || '';
+    const purpose = row.querySelector('td:nth-child(2)')?.innerText?.trim() || '';
+
+    const tpl = `
+      <div class="modal-head">
+        <h3>分配密钥</h3>
+        <button class="modal-close">×</button>
+      </div>
+      <form id="approveKeyForm">
+        <div class="modal-section">
+          <div class="field">
+            <label>申请人</label>
+            <input value="${applicant}" disabled style="background: var(--bg-mute); color: var(--ink-3);">
+          </div>
+          <div class="field">
+            <label>申请用途</label>
+            <div style="padding: 10px 12px; background: var(--bg-mute); border-radius: var(--radius-sm); font-size: 13px; color: var(--ink-2); line-height: 1.5;">${purpose}</div>
+          </div>
+          <div class="field">
+            <label>审核备注</label>
+            <textarea name="note" placeholder="可填写分配说明（可选）"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost modal-close">取消</button>
+          <button type="submit" class="btn btn-dark">确认分配</button>
+        </div>
+      </form>
+    `;
+    const m = Modal.open(tpl);
+    m.querySelector('form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(ev.currentTarget);
+      try {
+        const res = await postForm(`/api/keys/${id}/approve`, fd);
+        m.querySelector('.modal-head h3').textContent = '密钥分配成功';
+        m.querySelector('form').innerHTML = `
+          <div class="modal-section">
+            <div class="key-result-box">
+              <div class="key-result-label">已分配的 API Key</div>
+              <div class="key-result-value">
+                <code>${res.api_key}</code>
+                <button type="button" class="btn-key-copy" data-copy-text="${res.api_key}">复制</button>
+              </div>
+              <div class="key-result-hint">请妥善保存此密钥，关闭后可在密钥列表中查看。</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-dark modal-close">完成</button>
+          </div>
+        `;
+        m.querySelector('[data-copy-text]')?.addEventListener('click', async (ce) => {
+          const key = ce.currentTarget.getAttribute('data-copy-text');
+          try {
+            await copyToClipboard(key);
+            ce.currentTarget.textContent = '已复制';
+            setTimeout(() => { ce.currentTarget.textContent = '复制'; }, 1800);
+          } catch (_) { toast('复制失败', 'error'); }
+        });
+        m.querySelector('.modal-close').addEventListener('click', () => location.reload());
+        toast('密钥已分配', 'success');
+      } catch (err) {
+        toast('操作失败：' + err.message, 'error');
+      }
+    });
+  });
+
+  // 审核拒绝 - 弹窗
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-reject-key]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-reject-key');
+    const row = btn.closest('tr');
+    const applicant = row.querySelector('td:nth-child(1)')?.innerText?.trim() || '';
+    const purpose = row.querySelector('td:nth-child(2)')?.innerText?.trim() || '';
+
+    const tpl = `
+      <div class="modal-head">
+        <h3>拒绝密钥申请</h3>
+        <button class="modal-close">×</button>
+      </div>
+      <form id="rejectKeyForm">
+        <div class="modal-section">
+          <div class="field">
+            <label>申请人</label>
+            <input value="${applicant}" disabled style="background: var(--bg-mute); color: var(--ink-3);">
+          </div>
+          <div class="field">
+            <label>申请用途</label>
+            <div style="padding: 10px 12px; background: var(--bg-mute); border-radius: var(--radius-sm); font-size: 13px; color: var(--ink-2); line-height: 1.5;">${purpose}</div>
+          </div>
+          <div class="field">
+            <label>拒绝原因 <span style="color: var(--accent-red);">*</span></label>
+            <textarea name="note" placeholder="说明拒绝的理由，申请人将看到此说明" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost modal-close">取消</button>
+          <button type="submit" class="btn" style="background: var(--accent-red); color: #fff; border-color: var(--accent-red);">确认拒绝</button>
+        </div>
+      </form>
+    `;
+    const m = Modal.open(tpl);
+    m.querySelector('form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(ev.currentTarget);
+      try {
+        await postForm(`/api/keys/${id}/reject`, fd);
+        toast('已拒绝', 'success');
+        Modal.close();
+        setTimeout(() => location.reload(), 600);
+      } catch (err) {
+        toast('操作失败：' + err.message, 'error');
+      }
+    });
+  });
+
+  // 审核历史搜索 + 分页联动
+  const historyPager = initTablePager('keyHistoryBody', 'keyHistoryPager', 10);
+  document.addEventListener('input', (e) => {
+    if (e.target.id !== 'historySearch') return;
+    const q = e.target.value.trim().toLowerCase();
+    if (historyPager) historyPager.setSearch(q);
+  });
+
+  // 初始化其他两个 tab 的分页
+  initTablePager('keyPendingBody', 'keyPendingPager', 10);
+  initTablePager('keyActiveBody', 'keyActivePager', 10);
+
+  // 吊销密钥 - 弹窗（需填原因）
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-revoke]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-revoke');
+    const applicant = btn.getAttribute('data-applicant') || '';
+    const purpose = btn.getAttribute('data-purpose') || '';
+
+    const tpl = `
+      <div class="modal-head">
+        <h3>吊销密钥</h3>
+        <button class="modal-close">×</button>
+      </div>
+      <form id="revokeKeyForm">
+        <div class="modal-section">
+          ${applicant ? `
+          <div class="field">
+            <label>持有人</label>
+            <input value="${applicant}" disabled style="background: var(--bg-mute); color: var(--ink-3);">
+          </div>
+          ` : ''}
+          ${purpose ? `
+          <div class="field">
+            <label>申请用途</label>
+            <div style="padding: 10px 12px; background: var(--bg-mute); border-radius: var(--radius-sm); font-size: 13px; color: var(--ink-2); line-height: 1.5;">${purpose}</div>
+          </div>
+          ` : ''}
+          <div class="field">
+            <label>吊销原因 <span style="color: var(--accent-red);">*</span></label>
+            <textarea name="reason" placeholder="如：员工离职、密钥泄露、权限调整等" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost modal-close">取消</button>
+          <button type="submit" class="btn" style="background: var(--accent-red); color: #fff; border-color: var(--accent-red);">确认吊销</button>
+        </div>
+      </form>
+    `;
+    const m = Modal.open(tpl);
+    m.querySelector('form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(ev.currentTarget);
+      try {
+        await postForm(`/api/keys/${id}/revoke`, fd);
+        toast('密钥已吊销', 'success');
+        Modal.close();
+        setTimeout(() => location.reload(), 600);
+      } catch (err) {
+        toast('操作失败：' + err.message, 'error');
+      }
+    });
+  });
+</script>
+{% endblock %}

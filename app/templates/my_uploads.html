@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  <div class="hero-row">
+    <div class="hero-intro">
+      <div class="eyebrow">📁 贡献记录</div>
+      <h1 class="page-title">我的上传</h1>
+      <p class="page-subtitle">管理草稿、审核进度和已发布版本。</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-dark" data-upload-skill>
+        <span style="font-size: 14px;">＋</span> 新建 Skill
+      </button>
+    </div>
+  </div>
+
+  <section class="counters" data-filter-bar>
+    <div class="counter all is-active" data-filter="all">
+      <div class="v">{{ counts.all }}</div>
+      <div class="l">全部提交</div>
+    </div>
+    <div class="counter is-pending" data-filter="pending">
+      <div class="v" style="color: var(--accent-orange);">{{ counts.pending }}</div>
+      <div class="l">等待审核</div>
+    </div>
+    <div class="counter is-draft" data-filter="draft">
+      <div class="v">{{ counts.draft }}</div>
+      <div class="l">草稿</div>
+    </div>
+    <div class="counter is-approved" data-filter="published">
+      <div class="v" style="color: var(--accent-green);">{{ counts.approved }}</div>
+      <div class="l">审核通过</div>
+    </div>
+  </section>
+
+  <h2 style="font-size:16px; margin: 24px 0 12px;">提交记录</h2>
+
+  {% for v in versions %}
+    <div class="record" data-status="{{ v.status }}">
+      <div class="icon-tile" style="background:{{ v.skill.accent_color }}">{{ v.skill.icon }}</div>
+      <div class="record-main">
+        <div class="record-head">
+          <span class="name">{{ v.skill.name }}</span>
+          <span class="tag-version">{{ v.version }}</span>
+          <span class="status-badge {{ v.status }}">{{ v.status_label }}</span>
+          <span class="scope-chip scope-{{ v.scope }}">
+            {% if v.scope == 'public' %}🌍公开{% else %}🏢部门内可见{% endif %}
+          </span>
+          {% if v.featured_badge %}<span class="tag-featured">精选</span>{% endif %}
+        </div>
+        <p>{{ v.summary }}</p>
+        {% if v.decision_note %}
+          <div class="note-quote">审核意见：{{ v.decision_note }}</div>
+        {% endif %}
+      </div>
+      <div class="record-meta">
+        <div>{{ v.submitted_at.strftime('%Y-%m-%d') }}</div>
+        <div>{{ v.size_human }}</div>
+      </div>
+      <div class="record-actions">
+        {% if v.status == 'pending' %}
+          <button class="btn-withdraw" data-withdraw="{{ v.id }}">
+            ↩ 撤回
+          </button>
+        {% elif v.status == 'draft' or v.status == 'rejected' %}
+          <button class="btn-edit-submit" data-edit-submission="{{ v.id }}">
+            ✎ 编辑并提交
+          </button>
+        {% elif v.status == 'published' %}
+          <button class="btn-iterate" data-iterate="{{ v.id }}">
+            ↻ 更新迭代
+          </button>
+        {% elif v.status == 'superseded' %}
+          <span class="record-action-static">已替代</span>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="muted" style="padding: 60px; text-align:center;">还没有任何提交记录。</div>
+  {% endfor %}
+
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    MyUploadsPager.init({ perPage: 10 });
+  });
+</script>
+{% endblock %}

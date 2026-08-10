@@ -1,0 +1,51 @@
+{# 单个 Skill 卡片 — 需要传入 s (Skill) 和 v (published Version) #}
+<article class="skill-card"
+  data-name="{{ s.name }}"
+  data-tags="{{ v.tags_list | join(' ') }}"
+  data-desc="{{ s.short_description }}"
+  data-category="{{ s.category }}"
+  data-downloads="{{ s.downloads }}"
+  data-likes="{{ s.likes }}"
+  data-created="{{ v.decided_at | default(v.submitted_at) }}">
+  <div class="top-row">
+    <div class="icon-tile" style="background:{{ s.accent_color }}">{{ s.icon }}</div>
+    <div class="badges">
+      {% if v.featured_badge %}
+        <span class="tag-featured">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l2.39 6.95H22l-6.19 4.5L18.18 22 12 17.27 5.82 22l2.37-9.55L2 7.95h7.61z"/></svg>
+          精选
+        </span>
+      {% endif %}
+      <span class="tag-version">{{ v.version }}</span>
+    </div>
+  </div>
+  <h3 style="color: {{ s.accent_color }};">{{ s.name }}</h3>
+  <p class="desc">{{ s.short_description }}</p>
+  <div class="chips">
+    {% for t in v.tags_list %}
+      <span class="chip">{{ t }}</span>
+    {% endfor %}
+  </div>
+  <div class="author-row">
+    <div class="author">
+      <span class="mini-avatar" style="background:{{ s.accent_color }}">{{ s.owner_name[0] }}</span>
+      <span class="author-name">{{ s.owner_name }}</span>
+      <span style="color: var(--ink-4);">·</span>
+      <span>{{ s.owner_team }}</span>
+    </div>
+    <div class="metrics">
+      <span class="metric metric-download">
+        <span class="download">⤓</span> <span class="download-count">{{ "{:,}".format(s.downloads) }}</span>
+      </span>
+      <span class="metric metric-like" data-like="{{ s.id }}">
+        <span class="heart">♥</span> <span class="like-count">{{ s.likes }}</span>
+      </span>
+    </div>
+  </div>
+  <div class="card-footer">
+    <span class="publish-date">📦 {{ (v.decided_at or v.submitted_at).strftime('%Y-%m-%d') }} 上架</span>
+    <a class="btn btn-ghost" href="/api/skills/{{ v.id }}/download" download data-card-download="{{ v.id }}">
+      <span>↳</span> 安装
+    </a>
+  </div>
+</article>

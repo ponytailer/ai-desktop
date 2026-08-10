@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  <div class="hero-row">
+    <div class="hero-intro">
+      <div class="eyebrow">🔑 密钥中心</div>
+      <h1 class="page-title">密钥管理</h1>
+      <p class="page-subtitle">申请、查看和管理你的 API Key。</p>
+    </div>
+    <div class="hero-actions">
+      {% if has_active_key %}
+      <button class="btn btn-dark" disabled style="opacity: .5; cursor: not-allowed;" title="您已有在用的 API Key">
+        <span style="font-size: 14px;">＋</span> 申请 API Key
+      </button>
+      {% else %}
+      <button class="btn btn-dark" data-apply-key>
+        <span style="font-size: 14px;">＋</span> 申请 API Key
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── 统计卡 ── #}
+  <section class="counters" data-filter-bar>
+    <div class="counter all is-active" data-filter="all">
+      <div class="v">{{ counts.all }}</div>
+      <div class="l">全部申请</div>
+    </div>
+    <div class="counter is-pending" data-filter="pending">
+      <div class="v" style="color: var(--accent-orange);">{{ counts.pending }}</div>
+      <div class="l">待审核</div>
+    </div>
+    <div class="counter is-approved" data-filter="approved">
+      <div class="v" style="color: var(--accent-green);">{{ counts.approved }}</div>
+      <div class="l">已分配</div>
+    </div>
+    <div class="counter is-rejected" data-filter="rejected">
+      <div class="v" style="color: var(--accent-red);">{{ counts.rejected }}</div>
+      <div class="l">已拒绝</div>
+    </div>
+  </section>
+
+  {% if has_active_key %}
+  <div class="hint-box" style="margin-bottom: 12px;">
+    ℹ️ 您已有在用的 API Key，在当前密钥吊销前无法再次申请。
+  </div>
+  {% endif %}
+
+  {# ── 我的密钥 ── #}
+  <h2 style="font-size:16px; margin: 24px 0 12px;">我的密钥</h2>
+
+  {% if my_keys %}
+  <table class="review-table" style="margin-bottom: 32px;">
+    <thead>
+      <tr>
+        <th style="width: 32%;">用途</th>
+        <th style="width: 24%;">API Key</th>
+        <th style="width: 16%;">申请时间</th>
+        <th style="width: 14%;">状态</th>
+        <th style="width: 14%;">审核人</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for k in my_keys %}
+      <tr data-status="{{ k.status }}">
+        <td>
+          <div style="font-weight: 600; font-size: 14px;">{{ k.purpose }}</div>
+          {% if k.review_note %}
+          <div class="muted" style="font-size: 12px; margin-top: 4px;">审核意见：{{ k.review_note }}</div>
+          {% endif %}
+        </td>
+        <td>
+          {% if k.status == 'approved' and k.api_key_value %}
+            <div class="key-cell" data-key-id="{{ k.id }}">
+              <code class="key-text" data-key="{{ k.api_key_value }}">{{ k.masked_key }}</code>
+              <button class="btn-key-toggle" data-toggle-key="{{ k.id }}">
+                <span data-eye="show">👁</span>
+                <span data-eye="hide" style="display:none;">🙈</span>
+              </button>
+              <button class="btn-key-copy" data-copy-key="{{ k.id }}">复制</button>
+            </div>
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td class="muted" style="font-size: 13px;">{{ k.created_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          <span class="status-badge key-{{ k.status }}">{{ k.status_label }}</span>
+        </td>
+        <td class="muted" style="font-size: 13px;">{{ k.reviewed_by or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="muted" style="padding: 40px; text-align: center; border: 1px solid var(--line); border-radius: var(--radius-md); margin-bottom: 32px;">
+    还没有申请过 API Key，点击右上方按钮开始申请。
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+  // 通用表格分页（支持搜索过滤）
+  function initTablePager(bodyId, pagerId, perPage) {
+    const tbody = document.getElementById(bodyId);
+    const pager = document.getElementById(pagerId);
+    if (!tbody || !pager) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    let page = 1;
+    let searchQuery = '';
+
+    function visibleRows() {
+      if (!searchQuery) return rows;
+      return rows.filter((r) => {
+        const name = (r.getAttribute('data-applicant') || '').toLowerCase();
+        return name.includes(searchQuery);
+      });
+    }
+
+    function render() {
+      const vis = visibleRows();
+      const total = vis.length;
+      const totalPages = Math.max(1, Math.ceil(total / perPage));
+      if (page > totalPages) page = totalPages;
+      const start = (page - 1) * perPage;
+      const end = start + perPage;
+
+      rows.forEach((r) => { r.style.display = 'none'; });
+      vis.slice(start, end).forEach((r) => { r.style.display = ''; });
+
+      if (totalPages <= 1) { pager.innerHTML = ''; return; }
+      let html = `<span class="page-info">${total} 条 · 第 ${page}/${totalPages} 页</span>`;
+      html += `<button class="page-btn" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>‹</button>`;
+      pageNums(page, totalPages).forEach((p) => {
+        if (p === '...') html += `<span class="page-dots">…</span>`;
+        else html += `<button class="page-btn ${p === page ? 'is-active' : ''}" data-page="${p}">${p}</button>`;
+      });
+      html += `<button class="page-btn" data-page="${page + 1}" ${page === totalPages ? 'disabled' : ''}>›</button>`;
+      pager.innerHTML = html;
+    }
+
+    function pageNums(cur, total) {
+      const max = 7;
+      if (total <= max) return Array.from({length: total}, (_, i) => i + 1);
+      const pages = [1];
+      const left = Math.max(2, cur - 2);
+      const right = Math.min(total - 1, cur + 2);
+      if (left > 2) pages.push('...');
+      for (let i = left; i <= right; i++) pages.push(i);
+      if (right < total - 1) pages.push('...');
+      pages.push(total);
+      return pages;
+    }
+
+    pager.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-page]');
+      if (!btn || btn.disabled) return;
+      page = parseInt(btn.dataset.page, 10);
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    return {
+      setSearch(q) { searchQuery = q; page = 1; render(); },
+      render,
+    };
+  }
+
+  // 统计卡过滤（我的密钥）
+  document.addEventListener('click', (e) => {
+    const bar = e.target.closest('[data-filter-bar]');
+    if (!bar) return;
+    const card = e.target.closest('[data-filter]');
+    if (!card) return;
+    const filter = card.getAttribute('data-filter');
+    document.querySelectorAll('[data-filter-bar] [data-filter]').forEach((c) => c.classList.toggle('is-active', c === card));
+    document.querySelectorAll('.review-table tbody tr[data-status]').forEach((r) => {
+      r.style.display = (filter === 'all' || r.getAttribute('data-status') === filter) ? '' : 'none';
+    });
+  });
+
+  // 密钥显示/隐藏
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-toggle-key]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-toggle-key');
+    const cell = document.querySelector(`.key-cell[data-key-id="${id}"]`);
+    if (!cell) return;
+    const text = cell.querySelector('.key-text');
+    const fullKey = text.getAttribute('data-key');
+    const masked = text.getAttribute('data-masked') || (fullKey.slice(0, 6) + '****' + fullKey.slice(-4));
+    text.setAttribute('data-masked', masked);
+    const isShowing = text.dataset.showing === 'true';
+    if (isShowing) {
+      text.textContent = masked;
+      text.dataset.showing = 'false';
+    } else {
+      text.textContent = fullKey;
+      text.dataset.showing = 'true';
+    }
+    cell.querySelector('[data-eye="show"]').style.display = isShowing ? '' : 'none';
+    cell.querySelector('[data-eye="hide"]').style.display = isShowing ? 'none' : '';
+  });
+
+  // 复制到剪贴板（兼容非 HTTPS 环境）
+  async function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (!ok) throw new Error('copy failed');
+  }
+
+  // 复制密钥
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-copy-key]');
+    if (!btn) return;
+    const id = btn.getAttribute('data-copy-key');
+    const cell = document.querySelector(`.key-cell[data-key-id="${id}"]`);
+    const key = cell.querySelector('.key-text').getAttribute('data-key');
+    try {
+      await copyToClipboard(key);
+      btn.textContent = '已复制';
+      setTimeout(() => { btn.textContent = '复制'; }, 1800);
+    } catch (_) {
+      toast('复制失败', 'error');
+    }
+  });
+
+  // 申请 API Key 弹窗
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-apply-key]');
+    if (!btn) return;
+    e.preventDefault();
+    const applicantName = '{{ current_user.name }} ({{ current_user.id }})';
+    const tpl = `
+      <div class="modal-head">
+        <h3>申请 API Key</h3>
+        <button class="modal-close">×</button>
+      </div>
+      <form id="applyKeyForm">
+        <div class="modal-section">
+          <div class="field">
+            <label>申请人</label>
+            <input value="${applicantName}" disabled style="background: var(--bg-mute); color: var(--ink-3);">
+          </div>
+          <div class="field">
+            <label>申请用途 <span style="color: var(--accent-red);">*</span></label>
+            <textarea name="purpose" placeholder="说明你为什么需要 API Key、用在什么场景" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost modal-close">取消</button>
+          <button type="submit" class="btn btn-dark">提交申请</button>
+        </div>
+      </form>
+    `;
+    const m = Modal.open(tpl);
+    m.querySelector('form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const fd = new FormData(ev.currentTarget);
+      try {
+        const res = await postForm('/api/keys/apply', fd);
+        toast('申请已提交，等待审核', 'success');
+        Modal.close();
+        setTimeout(() => location.reload(), 600);
+      } catch (err) {
+        toast('提交失败：' + err.message, 'error');
+      }
+    });
+  });
+</script>
+{% endblock %}

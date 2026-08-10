@@ -1,0 +1,57 @@
+{% set pending = pending_reviews_count | default(0) %}
+{% set user = current_user %}
+<header class="navbar">
+  <a href="/" class="nav-logo">
+    <span class="logo-mark">AI</span>
+    AIDesktop
+  </a>
+  <nav class="nav-tabs">
+    <a href="/" class="{% if page == 'discover' %}active{% endif %}">
+      <span>🧭</span> 发现
+    </a>
+    <a href="/my-uploads" class="{% if page == 'my_uploads' %}active{% endif %}">
+      <span>🗂</span> 我的上传
+    </a>
+    {# 密钥管理：所有人可见（个人密钥申请） #}
+    <a href="/keys" class="{% if page == 'keys' %}active{% endif %}">
+      <span>🔑</span> 密钥管理
+    </a>
+    {# 管理后台：super_admin / skills_admin / key_admin 可见 #}
+    {% if user and (user.has_role('super_admin') or user.has_role('skills_admin') or user.has_role('key_admin')) %}
+    <a href="/admin" class="{% if page == 'admin' %}active{% endif %}">
+      <span>⚙</span> 管理后台
+      {% if (pending > 0 and user.has_role('skills_admin')) or (pending_key_count is defined and pending_key_count > 0 and user.has_role('key_admin')) %}
+      <span class="nav-badge">{{ (pending if user.has_role('skills_admin') and pending > 0 else 0) + (pending_key_count if user.has_role('key_admin') and pending_key_count is defined and pending_key_count > 0 else 0) }}</span>
+      {% endif %}
+    </a>
+    {% endif %}
+  </nav>
+  <div class="nav-actions">
+    <button class="btn btn-dark" data-upload-skill>
+      <span style="font-size: 14px;">＋</span> 上传 Skill
+    </button>
+    <div class="user-dropdown" id="userDropdown">
+      <button class="user-chip user-chip-trigger" type="button">
+        <span class="avatar">{{ user.avatar_label if user else '?' }}</span>
+        <div class="meta">
+          <span class="top">{{ user.id if user else '' }}</span>
+          <span class="bot">
+            {{ user.name if user else '' }}
+            {% if user and user.roles %}
+            <span class="role-tag">{{ user.role_labels | join(' · ') }}</span>
+            {% endif %}
+          </span>
+        </div>
+        <span class="user-dropdown-arrow">▾</span>
+      </button>
+      <div class="user-dropdown-menu">
+        <button class="user-dropdown-item" data-action="feedback">
+          <span>💬</span> 反馈
+        </button>
+        <a class="user-dropdown-item" href="/api/auth/logout">
+          <span>🚪</span> 退出登录
+        </a>
+      </div>
+    </div>
+  </div>
+</header>

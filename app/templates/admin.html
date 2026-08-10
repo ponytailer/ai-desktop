@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  {% include "partials/_admin_subnav.html" %}
+  <div class="hero-row">
+    <div class="hero-intro">
+      <div class="eyebrow">⚙ 管理后台</div>
+      <h1 class="page-title">用户管理</h1>
+      <p class="page-subtitle">管理员工角色与权限，后续支持从钉钉同步组织架构。</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-dark" data-add-user>
+        <span>＋</span> 新增用户
+      </button>
+      <button class="btn btn-ghost" data-sync-dingtalk title="后续支持从钉钉同步组织架构">
+        <span>🔄</span> 钉钉同步
+      </button>
+    </div>
+  </div>
+
+  {# ── 统计卡 ── #}
+  <section class="counters">
+    <div class="counter all is-active" data-filter="all">
+      <div class="v">{{ counts.total }}</div>
+      <div class="l">总员工数</div>
+    </div>
+    <div class="counter" data-filter="super_admin">
+      <div class="v">{{ counts.super_admin }}</div>
+      <div class="l">超级管理员</div>
+    </div>
+    <div class="counter" data-filter="skills_admin">
+      <div class="v">{{ counts.skills_admin }}</div>
+      <div class="l">Skills 管理员</div>
+    </div>
+    <div class="counter" data-filter="key_admin">
+      <div class="v">{{ counts.key_admin }}</div>
+      <div class="l">密钥管理员</div>
+    </div>
+  </section>
+
+  {# ── 搜索 ── #}
+  <section class="filter-bar" style="margin-bottom: 16px;">
+    <div class="input search" style="flex:1;">
+      <span class="input-icon">🔍</span>
+      <input id="empSearch" type="text" placeholder="搜索姓名、工号或部门">
+    </div>
+  </section>
+
+  {# ── 员工表格 ── #}
+  <div class="table-wrap">
+    <table class="review-table" id="empTable">
+      <thead>
+        <tr>
+          <th style="width: 60px;">头像</th>
+          <th>姓名</th>
+          <th>工号</th>
+          <th>部门</th>
+          <th>角色</th>
+          <th style="width: 70px; text-align: center;">数据</th>
+          <th style="width: 100px; text-align: right;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="empBody">
+        {% for emp in employees %}
+        <tr data-name="{{ emp.name }}" data-id="{{ emp.id }}" data-dept="{{ emp.department }}" data-roles="{{ emp.roles_list | join(',') }}">
+          <td>
+            <span class="mini-avatar" style="background: var(--brand);">{{ emp.name[0] }}</span>
+          </td>
+          <td>
+            <span class="name" style="font-weight: 600; color: var(--ink-1);">{{ emp.name }}</span>
+          </td>
+          <td style="color: var(--ink-3); font-variant-numeric: tabular-nums;">{{ emp.id }}</td>
+          <td style="color: var(--ink-2);">{{ emp.department }}</td>
+          <td>
+            {% if emp.roles_list %}
+              {% for r in emp.roles_list %}
+              <span class="role-badge role-{{ r }}">{{ role_labels.get(r, r) }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="role-badge role-default">普通员工</span>
+            {% endif %}
+          </td>
+          <td style="text-align: center;">
+            {% if emp.is_test_data %}
+            <span class="test-badge">测试</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <button class="btn-edit-role" data-edit-role="{{ emp.id }}">编辑角色</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script>
+  (function () {
+    const search = document.getElementById('empSearch');
+    const rows = Array.from(document.querySelectorAll('#empBody tr'));
+    const counters = Array.from(document.querySelectorAll('.counter'));
+    const pager = document.getElementById('pagination');
+    const PER_PAGE = 10;
+    let currentPage = 1;
+    let visibleRows = [];
+    let roleFilter = 'all';
+
+    function applyFilter() {
+      const q = (search.value || '').trim().toLowerCase();
+      visibleRows = rows.filter((tr) => {
+        const name = (tr.dataset.name || '').toLowerCase();
+        const id = (tr.dataset.id || '').toLowerCase();
+        const dept = (tr.dataset.dept || '').toLowerCase();
+        const roles = (tr.dataset.roles || '').split(',').filter(Boolean);
+        const matchText = !q || name.includes(q) || id.includes(q) || dept.includes(q);
+        const matchRole = roleFilter === 'all' || roles.includes(roleFilter);
+        return matchText && matchRole;
+      });
+      currentPage = 1;
+      renderPage();
+    }
+
+    function renderPage() {
+      const total = visibleRows.length;
+      const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+      if (currentPage > totalPages) currentPage = totalPages;
+      const start = (currentPage - 1) * PER_PAGE;
+      const end = start + PER_PAGE;
+
+      rows.forEach((r) => { r.style.display = 'none'; });
+      visibleRows.slice(start, end).forEach((r) => { r.style.display = ''; });
+
+      if (totalPages <= 1) { pager.innerHTML = ''; return; }
+      let html = `<span class="page-info">${total} 名员工 · 第 ${currentPage}/${totalPages} 页</span>`;
+      html += `<button class="page-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+      for (let i = 1; i <= totalPages; i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'is-active' : ''}" data-page="${i}">${i}</button>`;
+      }
+      html += `<button class="page-btn" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
+      pager.innerHTML = html;
+    }
+
+    // 统计卡点击过滤
+    counters.forEach((c) => {
+      c.addEventListener('click', () => {
+        roleFilter = c.dataset.filter || 'all';
+        counters.forEach((x) => x.classList.remove('is-active'));
+        c.classList.add('is-active');
+        applyFilter();
+      });
+    });
+
+    pager.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-page]');
+      if (!btn || btn.disabled) return;
+      currentPage = parseInt(btn.dataset.page, 10);
+      renderPage();
+    });
+
+    search.addEventListener('input', applyFilter);
+    applyFilter();
+  })();
+
+  // ---- 编辑角色弹窗 ----
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-edit-role]');
+    if (!btn) return;
+    const empId = btn.getAttribute('data-edit-role');
+
+    let info;
+    try {
+      const res = await fetch(`/api/employees/${empId}`);
+      if (!res.ok) throw new Error('加载失败');
+      info = await res.json();
+    } catch (err) {
+      toast('加载员工信息失败', 'error');
+      return;
+    }
+
+    const roleOptions = [
+      { key: 'skills_admin', label: 'Skills 管理员' },
+      { key: 'key_admin',    label: '密钥管理员' },
+      { key: 'super_admin',  label: '超级管理员' },
+    ];
+
+    const checks = roleOptions.map(r => `
+      <label class="role-check">
+        <input type="checkbox" value="${r.key}" ${info.roles.includes(r.key) ? 'checked' : ''}>
+        <span>${r.label}</span>
+      </label>
+    `).join('');
+
+    const tpl = `
+      <div class="modal-head">
+        <h3>编辑角色</h3>
+        <button class="modal-close" onclick="Modal.close()">×</button>
+      </div>
+      <div class="modal-section">
+        <div class="field">
+          <label>姓名</label>
+          <input value="${info.name}" readonly style="background: var(--bg-mute); color: var(--ink-3);">
+        </div>
+        <div class="field">
+          <label>工号</label>
+          <input value="${info.id}" readonly style="background: var(--bg-mute); color: var(--ink-3);">
+        </div>
+        <div class="field">
+          <label>部门</label>
+          <input value="${info.department}" readonly style="background: var(--bg-mute); color: var(--ink-3);">
+        </div>
+        <div class="field">
+          <label>角色分配</label>
+          <div class="role-checks">
+            ${checks}
+            <div style="font-size: 12px; color: var(--ink-4); margin-top: 4px;">
+              不勾选任何角色即为「普通员工」。
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="Modal.close()">取消</button>
+        <button class="btn btn-dark" id="saveRolesBtn">保存</button>
+      </div>
+    `;
+
+    const m = Modal.open(tpl);
+
+    m.querySelector('#saveRolesBtn').addEventListener('click', async () => {
+      const checked = Array.from(m.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+      try {
+        const res = await fetch(`/api/employees/${empId}/roles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roles: checked }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || '保存失败');
+        }
+        toast('角色已更新', 'success');
+        Modal.close();
+        setTimeout(() => location.reload(), 600);
+      } catch (err) {
+        toast(err.message || '保存失败', 'error');
+      }
+    });
+  });
+
+  // ---- 新增用户弹窗 ----
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-add-user]');
+    if (!btn) return;
+
+    const roleOptions = [
+      { key: 'skills_admin', label: 'Skills 管理员' },
+      { key: 'key_admin',    label: '密钥管理员' },
+      { key: 'super_admin',  label: '超级管理员' },
+    ];
+
+    const checks = roleOptions.map(r => `
+      <label class="role-check">
+        <input type="checkbox" value="${r.key}">
+        <span>${r.label}</span>
+      </label>
+    `).join('');
+
+    const tpl = `
+      <div class="modal-head">
+        <h3>新增用户</h3>
+        <button class="modal-close" onclick="Modal.close()">×</button>
+      </div>
+      <div class="modal-section">
+        <div class="field">
+          <label>工号 <span style="color: var(--danger);">*</span></label>
+          <input id="newEmpId" type="text" placeholder="请输入工号" maxlength="20">
+        </div>
+        <div class="field">
+          <label>姓名 <span style="color: var(--danger);">*</span></label>
+          <input id="newEmpName" type="text" placeholder="请输入姓名" maxlength="80">
+        </div>
+        <div class="field">
+          <label>部门</label>
+          <input id="newEmpDept" type="text" placeholder="请输入部门" maxlength="80">
+        </div>
+        <div class="field">
+          <label>角色分配</label>
+          <div class="role-checks">
+            ${checks}
+            <div style="font-size: 12px; color: var(--ink-4); margin-top: 4px;">
+              不勾选任何角色即为「普通员工」。
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="Modal.close()">取消</button>
+        <button class="btn btn-dark" id="createEmpBtn">创建</button>
+      </div>
+    `;
+
+    const m = Modal.open(tpl);
+
+    m.querySelector('#createEmpBtn').addEventListener('click', async () => {
+      const id = m.querySelector('#newEmpId').value.trim();
+      const name = m.querySelector('#newEmpName').value.trim();
+      const dept = m.querySelector('#newEmpDept').value.trim();
+      const roles = Array.from(m.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+
+      if (!id) { toast('请输入工号', 'error'); return; }
+      if (!name) { toast('请输入姓名', 'error'); return; }
+
+      try {
+        const res = await fetch('/api/employees', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, name, department: dept, roles }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || '创建失败');
+        }
+        toast('用户创建成功', 'success');
+        Modal.close();
+        setTimeout(() => location.reload(), 600);
+      } catch (err) {
+        toast(err.message || '创建失败', 'error');
+      }
+    });
+  });
+
+  // 钉钉同步占位
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-sync-dingtalk]');
+    if (!btn) return;
+    toast('钉钉同步功能开发中，敬请期待', 'info');
+  });
+</script>
+{% endblock %}

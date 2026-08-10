@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 · SkillHub</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="login-body">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-brand">
+        <span class="logo-mark">AI</span>
+        <span class="login-brand-name">AIDesktop</span>
+      </div>
+      <h1 class="login-title">登录到 SkillHub</h1>
+      <p class="login-subtitle">企业 Skills 分享平台</p>
+
+      <form id="loginForm" class="login-form" method="post" action="/api/auth/login">
+        <div class="login-field">
+          <label for="username">用户名</label>
+          <input type="text" id="username" name="username" placeholder="请输入用户名" autocomplete="username" required autofocus>
+        </div>
+        <div class="login-field">
+          <label for="password">密码</label>
+          <input type="password" id="password" name="password" placeholder="请输入密码" autocomplete="current-password" required>
+        </div>
+        <div class="login-options">
+          <label class="login-remember">
+            <input type="checkbox" name="remember" value="on">
+            <span>30 天免登录</span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-dark login-submit">
+          登 录
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <div id="toast-root"></div>
+  <script src="/static/js/app.js"></script>
+  <script>
+    // 登录表单：AJAX 提交，显示错误提示
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const btn = form.querySelector('.login-submit');
+      btn.disabled = true;
+      btn.textContent = '登录中…';
+      try {
+        const fd = new FormData(form);
+        const res = await fetch('/api/auth/login', { method: 'POST', body: fd, redirect: 'manual' });
+        if (res.ok || res.status === 302) {
+          window.location.href = '/';
+        } else if (res.status === 401) {
+          const j = await res.json();
+          toast(j.detail || '用户名或密码错误', 'error');
+          btn.disabled = false;
+          btn.textContent = '登 录';
+        } else {
+          // 可能是重定向
+          window.location.href = '/';
+        }
+      } catch (err) {
+        // fetch 遇到 302 会报错，直接跳转
+        window.location.href = '/';
+      }
+    });
+  </script>
+</body>
+</html>

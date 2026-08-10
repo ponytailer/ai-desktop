@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  {% include "partials/_admin_subnav.html" %}
+
+  <div class="hero-row">
+    <div class="hero-intro">
+      <div class="eyebrow">⚙ 管理后台</div>
+      <h1 class="page-title">用户反馈</h1>
+      <p class="page-subtitle">查看员工通过右上角「反馈」提交的建议与意见，共 {{ total }} 条，其中 <span id="feedbackUnreadCount">{{ unread_count }}</span> 条未读。</p>
+    </div>
+  </div>
+
+  <div class="fb-toolbar">
+    <label class="fb-select-all">
+      <input type="checkbox" id="selectAllFb">
+      <span>全选</span>
+    </label>
+    <button class="btn btn-sm fb-batch-read" id="batchReadBtn" disabled>
+      <span>✓</span> 批量标为已读
+    </button>
+    <label class="fb-filter-unread">
+      <input type="checkbox" id="filterUnread">
+      <span>仅看未读</span>
+    </label>
+    <span class="fb-selected-count" id="selectedCount"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table class="review-table" id="feedbackTable">
+      <thead>
+        <tr>
+          <th style="width: 44px;"></th>
+          <th style="width: 56px;">头像</th>
+          <th>姓名</th>
+          <th>工号</th>
+          <th>反馈内容</th>
+          <th style="width: 150px;">提交时间</th>
+          <th style="width: 110px;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="feedbackBody">
+        {% for fb in feedbacks %}
+        <tr class="fb-row {% if not fb.is_read %}is-unread{% endif %}" data-id="{{ fb.id }}" data-read="{{ '1' if fb.is_read else '0' }}">
+          <td class="fb-check">
+            <input type="checkbox" class="fb-select" {% if fb.is_read %}disabled{% endif %}>
+          </td>
+          <td>
+            <span class="mini-avatar" style="background: var(--brand);">{{ (fb.employee_name or '?')[0] }}</span>
+          </td>
+          <td>
+            <span class="name" style="font-weight: 600; color: var(--ink-1);">
+              {% if not fb.is_read %}<span class="unread-dot"></span>{% endif %}{{ fb.employee_name or '匿名' }}
+            </span>
+          </td>
+          <td style="color: var(--ink-3); font-variant-numeric: tabular-nums;">{{ fb.employee_id }}</td>
+          <td class="fb-content-cell">
+            <span class="fb-preview">{{ fb.preview }}</span>
+            <span class="fb-full" hidden>{{ fb.content }}</span>
+          </td>
+          <td style="color: var(--ink-4); white-space: nowrap; font-size: 13px;">{{ fb.created_label }}</td>
+          <td class="fb-action-cell">
+            {% if not fb.is_read %}
+            <button class="btn btn-ghost btn-sm" data-mark-read="{{ fb.id }}">标记已读</button>
+            {% else %}
+            <span class="read-tag">✓ 已读</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="empty-cell">
+            <div class="empty-state">
+              <div class="empty-icon">💬</div>
+              <div class="empty-title">暂无用户反馈</div>
+              <div class="empty-sub">员工通过右上角「反馈」提交的内容会出现在这里。</div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const body = document.getElementById('feedbackBody');
+    if (!body) return;
+
+    const selectAll = document.getElementById('selectAllFb');
+    const batchBtn = document.getElementById('batchReadBtn');
+    const filterUnread = document.getElementById('filterUnread');
+    const selectedCount = document.getElementById('selectedCount');
+
+    function anyUnread() {
+      return document.querySelectorAll('#feedbackBody .fb-row.is-unread').length;
+    }
+
+    function updateUnreadBadge() {
+      const n = anyUnread();
+      const badge = document.querySelector('.admin-subnav a[href="/admin/feedback"] .nav-badge');
+      if (badge) {
+        if (n > 0) { badge.textContent = n; badge.style.display = ''; }
+        else badge.remove();
+      }
+      const stat = document.getElementById('feedbackUnreadCount');
+      if (stat) stat.textContent = n;
+    }
+
+    function selectedIds() {
+      return [...document.querySelectorAll('#feedbackBody .fb-select:checked')]
+        .map(cb => parseInt(cb.closest('.fb-row').dataset.id, 10));
+    }
+
+    function syncBatchBtn() {
+      const n = selectedIds().length;
+      batchBtn.disabled = n === 0;
+      selectedCount.textContent = n > 0 ? `已选 ${n} 条` : '';
+      if (selectAll) {
+        const all = document.querySelectorAll('#feedbackBody .fb-select:not([disabled])');
+        selectAll.checked = all.length > 0 && [...all].every(cb => cb.checked);
+      }
+    }
+
+    function markRowRead(row) {
+      row.classList.remove('is-unread');
+      row.dataset.read = '1';
+      const cb = row.querySelector('.fb-select');
+      if (cb) { cb.checked = false; cb.disabled = true; }
+      const nameEl = row.querySelector('.name .unread-dot');
+      if (nameEl) nameEl.remove();
+      const actionCell = row.querySelector('.fb-action-cell');
+      if (actionCell) actionCell.innerHTML = '<span class="read-tag">✓ 已读</span>';
+      updateUnreadBadge();
+      syncBatchBtn();
+    }
+
+    async function doMarkRead(id, row) {
+      try {
+        const res = await fetch(`/api/feedback/${id}/read`, { method: 'POST' });
+        if (!res.ok) throw new Error('操作失败');
+        markRowRead(row);
+        toast('已标记为已读', 'success');
+      } catch (e) {
+        toast(e.message || '操作失败', 'error');
+      }
+    }
+
+    // 单行「标记已读」
+    body.addEventListener('click', (e) => {
+      const markBtn = e.target.closest('[data-mark-read]');
+      if (markBtn) {
+        e.stopPropagation();
+        const row = markBtn.closest('.fb-row');
+        doMarkRead(parseInt(markBtn.dataset.markRead, 10), row);
+        return;
+      }
+      if (e.target.closest('.fb-select')) return; // 复选框不触发详情
+
+      const row = e.target.closest('.fb-row');
+      if (!row) return;
+
+      const name = (row.querySelector('.name') || {}).textContent.replace('✓ 已读', '').trim() || '匿名';
+      const empId = row.children[3].textContent.trim();
+      const time = row.children[5].textContent.trim();
+      const full = (row.querySelector('.fb-full') || {}).textContent || '';
+      const isUnread = row.classList.contains('is-unread');
+      const fid = parseInt(row.dataset.id, 10);
+
+      const tpl = `
+        <div class="modal-head">
+          <h3>💬 用户反馈详情</h3>
+          <button class="modal-close" onclick="Modal.close()">×</button>
+        </div>
+        <div class="modal-section">
+          <div class="fb-detail-meta">
+            <span class="mini-avatar" style="background: var(--brand);">${(name || '?')[0]}</span>
+            <div>
+              <div style="font-weight: 600; color: var(--ink-1);">${escapeHtml(name)}</div>
+              <div style="font-size: 12px; color: var(--ink-4);">工号 ${escapeHtml(empId)} · ${escapeHtml(time)}</div>
+            </div>
+          </div>
+          <div class="fb-detail-content">${escapeHtml(full)}</div>
+        </div>
+        <div class="modal-footer">
+          ${isUnread ? `<button class="btn btn-dark" id="detailMarkRead" data-id="${fid}">✓ 标记为已读</button>` : ''}
+          <button class="btn btn-ghost" onclick="Modal.close()">关闭</button>
+        </div>
+      `;
+      Modal.open(tpl);
+
+      const dmr = document.getElementById('detailMarkRead');
+      if (dmr) {
+        dmr.addEventListener('click', () => {
+          doMarkRead(fid, row).then(() => Modal.close());
+        });
+      }
+    });
+
+    // 复选框变化
+    body.addEventListener('change', (e) => {
+      if (e.target.classList.contains('fb-select')) syncBatchBtn();
+    });
+
+    // 全选
+    if (selectAll) {
+      selectAll.addEventListener('change', () => {
+        document.querySelectorAll('#feedbackBody .fb-select:not([disabled])')
+          .forEach(cb => { cb.checked = selectAll.checked; });
+        syncBatchBtn();
+      });
+    }
+
+    // 批量标为已读
+    batchBtn.addEventListener('click', async () => {
+      const ids = selectedIds();
+      if (!ids.length) return;
+      batchBtn.disabled = true;
+      const prevText = batchBtn.innerHTML;
+      batchBtn.innerHTML = '处理中…';
+      try {
+        const res = await fetch('/api/feedback/read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+        if (!res.ok) throw new Error('批量操作失败');
+        ids.forEach(id => {
+          const row = document.querySelector(`#feedbackBody .fb-row[data-id="${id}"]`);
+          if (row) markRowRead(row);
+        });
+        toast(`已将 ${ids.length} 条反馈标记为已读`, 'success');
+      } catch (e) {
+        toast(e.message || '批量操作失败', 'error');
+        batchBtn.innerHTML = prevText;
+      }
+      syncBatchBtn();
+    });
+
+    // 仅看未读
+    if (filterUnread) {
+      filterUnread.addEventListener('change', () => {
+        document.querySelectorAll('#feedbackBody .fb-row').forEach(row => {
+          const show = !filterUnread.checked || row.classList.contains('is-unread');
+          row.style.display = show ? '' : 'none';
+        });
+        syncBatchBtn();
+      });
+    }
+
+    updateUnreadBadge();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  {% include "partials/_admin_subnav.html" %}
+
+  <div class="hero-row">
+    <div class="hero-intro">
+      <h1 class="page-title">Skills 审核</h1>
+      <p class="page-subtitle">检查版本说明、来源和附件后决定是否发布。</p>
+    </div>
+
+    <section class="stat-row">
+      <div class="stat-cell"><div class="v" style="color: var(--accent-orange);">{{ counts.pending }}</div><div class="l">待处理</div></div>
+      <div class="stat-cell"><div class="v" style="color: var(--accent-green);">{{ counts.published }}</div><div class="l">已上架</div></div>
+      <div class="stat-cell"><div class="v">{{ counts.teams }}</div><div class="l">贡献团队</div></div>
+    </section>
+  </div>
+
+  <div class="tabs-bar" data-tabs>
+    <button class="active" data-tab="pending">待审核 <span style="color: var(--accent-orange);">{{ counts.pending }}</span></button>
+    <button data-tab="history">审核历史</button>
+  </div>
+
+  <section data-tab-panel="pending">
+    <table class="review-table">
+      <thead>
+        <tr>
+          <th style="width: 36%;">Skill / 版本</th>
+          <th style="width: 14%;">上传者</th>
+          <th style="width: 14%;">提交时间</th>
+          <th style="width: 14%;">文件</th>
+          <th style="width: 10%;">状态</th>
+          <th style="width: 12%;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="pendingBody">
+        {% for v in pending %}
+        <tr>
+          <td class="skill-cell">
+            <div class="row" style="gap:8px;">
+              <div class="icon-tile" style="background:{{ v.skill.accent_color }}; width: 28px; height: 28px; font-size: 13px; flex: 0 0 28px;">{{ v.skill.icon }}</div>
+              <div>
+                <div class="name">{{ v.skill.name }} <span class="tag-version" style="font-weight: 400;">{{ v.version }}</span></div>
+                <div class="desc">{{ v.summary }}</div>
+              </div>
+            </div>
+            <div class="badge-row">
+              <span class="scope-chip scope-{{ v.scope }}">
+                {% if v.scope == 'public' %}🌍 公开{% else %}🏢 部门内可见{% endif %}
+              </span>
+            </div>
+          </td>
+          <td>
+            <div>{{ v.submitted_by }}</div>
+            <div class="muted" style="font-size: 12px;">{{ v.submitted_by | lower }}@example.com</div>
+          </td>
+          <td>{{ v.submitted_at.strftime('%Y-%m-%d') }}</td>
+          <td>
+            <span class="file">
+              <span>📄</span> {{ v.size_human }}
+            </span>
+          </td>
+          <td>
+            <span class="status-badge pending">待审核</span>
+            <div style="margin-top:6px;">
+              <span class="scope-chip scope-{{ v.scope }}">
+                {% if v.scope == 'public' %}🌍 公开{% else %}🏢 部门内可见{% endif %}
+              </span>
+            </div>
+          </td>
+          <td>
+            <button class="btn-review" data-review="{{ v.id }}">开始审核 →</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="muted" style="text-align:center; padding: 40px;">暂无待审核项</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="pagination" id="pendingPager"></div>
+  </section>
+
+  <section data-tab-panel="history" style="display:none;">
+    <table class="review-table">
+      <thead>
+        <tr><th>Skill / 版本</th><th>决定</th><th>审核人</th><th>时间</th><th>意见</th></tr>
+      </thead>
+      <tbody id="historyBody">
+        {% for v in history %}
+        <tr>
+          <td><div class="row" style="gap:8px;">
+            <div class="icon-tile" style="background:{{ v.skill.accent_color }}; width: 26px; height: 26px; font-size: 13px; flex: 0 0 26px;">{{ v.skill.icon }}</div>
+            <div>
+              <div class="name">{{ v.skill.name }} <span class="tag-version">{{ v.version }}</span></div>
+              <div class="desc">{{ v.summary }}</div>
+            </div>
+          </div></td>
+          <td>
+            {% if v.status == 'published' %}
+              <span class="status-badge published">通过并发布</span>
+            {% elif v.status == 'rejected' %}
+              <span class="status-badge rejected">已拒绝</span>
+            {% else %}
+              <span class="status-badge superseded">已替代</span>
+            {% endif %}
+          </td>
+          <td>{{ v.decided_by or '—' }}</td>
+          <td>{{ v.decided_at.strftime('%Y-%m-%d') if v.decided_at else '' }}</td>
+          <td class="muted" style="font-size: 12px;">{{ v.decision_note or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="muted" style="text-align:center; padding: 40px;">暂无审核历史</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="pagination" id="historyPager"></div>
+  </section>
+</div>
+
+<script>
+  // 通用表格分页
+  function initTablePager(bodyId, pagerId, perPage) {
+    const tbody = document.getElementById(bodyId);
+    const pager = document.getElementById(pagerId);
+    if (!tbody || !pager) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    let page = 1;
+
+    function render() {
+      const dataRows = rows.filter(r => !r.querySelector('td[colspan]'));
+      const total = dataRows.length;
+      const totalPages = Math.max(1, Math.ceil(total / perPage));
+      if (page > totalPages) page = totalPages;
+      const start = (page - 1) * perPage;
+      const end = start + perPage;
+
+      dataRows.forEach((r) => { r.style.display = 'none'; });
+      dataRows.slice(start, end).forEach((r) => { r.style.display = ''; });
+
+      if (totalPages <= 1) { pager.innerHTML = ''; return; }
+      let html = `<span class="page-info">${total} 条 · 第 ${page}/${totalPages} 页</span>`;
+      html += `<button class="page-btn" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>‹</button>`;
+      const pages = pageNums(page, totalPages);
+      pages.forEach((p) => {
+        if (p === '...') html += `<span class="page-dots">…</span>`;
+        else html += `<button class="page-btn ${p === page ? 'is-active' : ''}" data-page="${p}">${p}</button>`;
+      });
+      html += `<button class="page-btn" data-page="${page + 1}" ${page === totalPages ? 'disabled' : ''}>›</button>`;
+      pager.innerHTML = html;
+    }
+
+    function pageNums(cur, total) {
+      const max = 7;
+      if (total <= max) return Array.from({length: total}, (_, i) => i + 1);
+      const pages = [1];
+      const left = Math.max(2, cur - 2);
+      const right = Math.min(total - 1, cur + 2);
+      if (left > 2) pages.push('...');
+      for (let i = left; i <= right; i++) pages.push(i);
+      if (right < total - 1) pages.push('...');
+      pages.push(total);
+      return pages;
+    }
+
+    pager.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-page]');
+      if (!btn || btn.disabled) return;
+      page = parseInt(btn.dataset.page, 10);
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    render();
+  }
+
+  // Tab 切换
+  (function () {
+    const tabs = document.querySelectorAll('[data-tab]');
+    const panels = document.querySelectorAll('[data-tab-panel]');
+    tabs.forEach((t) => t.addEventListener('click', () => {
+      tabs.forEach((x) => x.classList.toggle('active', x === t));
+      panels.forEach((p) => {
+        p.style.display = (p.dataset.tabPanel === t.dataset.tab) ? '' : 'none';
+      });
+    }));
+  })();
+
+  // 初始化分页
+  initTablePager('pendingBody', 'pendingPager', 10);
+  initTablePager('historyBody', 'historyPager', 10);
+</script>
+{% endblock %}

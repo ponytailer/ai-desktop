@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  <div class="hero-row">
+    <div class="hero-intro">
+      <div class="eyebrow">✦ 旅文内部技能市场</div>
+      <h1 class="page-title">找到团队验证过的 Skills</h1>
+      <p class="page-subtitle">浏览、安装并复用经过审核的Skill。</p>
+    </div>
+
+    <section class="stat-row">
+      <div class="stat-cell"><div class="v">{{ stats.published }}</div><div class="l">已上架</div></div>
+      <div class="stat-cell"><div class="v">{{ "{:,}".format(stats.downloads) }}</div><div class="l">累计安装</div></div>
+      <div class="stat-cell"><div class="v">{{ stats.teams }}</div><div class="l">贡献团队</div></div>
+    </section>
+  </div>
+
+  <section class="filter-bar">
+    <div class="input search" style="flex:1;">
+      <span class="input-icon">🔍</span>
+      <input id="searchInput" type="text" placeholder="搜索名称、简介或标签">
+    </div>
+    <div class="dropdown" id="categoryDropdown" style="min-width: 160px;">
+      <button class="dropdown-trigger" type="button">
+        <span class="dropdown-label">全部分类</span>
+        <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-item is-active" data-value="">全部分类</div>
+        {% for cat in categories %}
+        <div class="dropdown-item" data-value="{{ cat }}">{{ cat }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="dropdown" id="sortDropdown" style="min-width: 160px;">
+      <button class="dropdown-trigger" type="button">
+        <span class="dropdown-label">最多安装</span>
+        <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="dropdown-menu">
+        <div class="dropdown-item is-active" data-value="downloads">最多安装</div>
+        <div class="dropdown-item" data-value="likes">最受欢迎</div>
+        <div class="dropdown-item" data-value="created_at">最新上架</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <h2>全部 Skills</h2>
+    <span class="meta" id="resultMeta">{{ skills | length }} 个结果</span>
+  </div>
+
+  <section class="grid" id="skillGrid">
+    {% for s in skills %}
+      {% set v = s.published_version %}
+      {% include "partials/_skill_card.html" %}
+    {% endfor %}
+  </section>
+
+  {% if not skills %}
+    <div class="muted" style="padding: 60px; text-align:center;">还没有已上架的 Skill。</div>
+  {% endif %}
+
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<script>
+  /* ---- 自定义下拉组件 ---- */
+  function initDropdown(el, onChange) {
+    const trigger = el.querySelector('.dropdown-trigger');
+    const label = el.querySelector('.dropdown-label');
+    const items = el.querySelectorAll('.dropdown-item');
+    let currentValue = el.querySelector('.dropdown-item.is-active')?.dataset.value || '';
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.dropdown.open').forEach(d => { if (d !== el) d.classList.remove('open'); });
+      el.classList.toggle('open');
+    });
+
+    items.forEach(item => {
+      item.addEventListener('click', () => {
+        items.forEach(i => i.classList.remove('is-active'));
+        item.classList.add('is-active');
+        label.textContent = item.textContent;
+        currentValue = item.dataset.value;
+        el.classList.remove('open');
+        onChange();
+      });
+    });
+
+    return { get value() { return currentValue; } };
+  }
+
+  /* 点击外部关闭下拉 */
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+  });
+
+  (function () {
+    const grid = document.getElementById('skillGrid');
+    if (!grid) return;
+    const cards = Array.from(grid.children);
+    const search = document.getElementById('searchInput');
+    const catDropdown = initDropdown(document.getElementById('categoryDropdown'), applyFilters);
+    const sortDropdown = initDropdown(document.getElementById('sortDropdown'), applyFilters);
+    const meta = document.getElementById('resultMeta');
+    const pager = document.getElementById('pagination');
+
+    const PER_PAGE = 15;
+    let currentPage = 1;
+    let visibleCards = [];
+
+    function applyFilters() {
+      const q = (search.value || '').trim().toLowerCase();
+      const cat = catDropdown.value;
+      visibleCards = cards.filter((el) => {
+        const title = el.dataset.name || '';
+        const tags = el.dataset.tags || '';
+        const desc = el.dataset.desc || '';
+        const c = el.dataset.category || '';
+        const ok = (!q || (title + ' ' + tags + ' ' + desc).toLowerCase().includes(q))
+          && (!cat || c === cat);
+        return ok;
+      });
+
+      // 排序
+      const key = sortDropdown.value;
+      const order = {
+        downloads: (a, b) => Number(b.dataset.downloads) - Number(a.dataset.downloads),
+        likes:     (a, b) => Number(b.dataset.likes) - Number(a.dataset.likes),
+        created_at:(a, b) => new Date(b.dataset.created) - new Date(a.dataset.created),
+      }[key] || (() => 0);
+      visibleCards.sort(order);
+
+      meta.textContent = `${visibleCards.length} 个结果`;
+      currentPage = 1;
+      renderPage();
+    }
+
+    function renderPage() {
+      const total = visibleCards.length;
+      const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+      if (currentPage > totalPages) currentPage = totalPages;
+      const start = (currentPage - 1) * PER_PAGE;
+      const end = start + PER_PAGE;
+
+      // 先隐藏全部
+      cards.forEach((c) => { c.style.display = 'none'; });
+      // 显示当前页
+      visibleCards.slice(start, end).forEach((c) => { c.style.display = ''; });
+      // 重新插入到 grid（保持排序顺序）
+      visibleCards.forEach((c) => grid.appendChild(c));
+
+      renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+      if (totalPages <= 1) { pager.innerHTML = ''; return; }
+      let html = `<span class="page-info">${visibleCards.length} 个结果 · 第 ${currentPage}/${totalPages} 页</span>`;
+      // 上一页
+      html += `<button class="page-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+      // 页码（最多显示7个，带省略号）
+      const pages = pageNumbers(currentPage, totalPages);
+      pages.forEach((p) => {
+        if (p === '...') {
+          html += `<span class="page-dots">…</span>`;
+        } else {
+          html += `<button class="page-btn ${p === currentPage ? 'is-active' : ''}" data-page="${p}">${p}</button>`;
+        }
+      });
+      // 下一页
+      html += `<button class="page-btn" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
+      pager.innerHTML = html;
+    }
+
+    function pageNumbers(cur, total) {
+      const max = 7;
+      if (total <= max) return Array.from({length: total}, (_, i) => i + 1);
+      const pages = [1];
+      const left = Math.max(2, cur - 2);
+      const right = Math.min(total - 1, cur + 2);
+      if (left > 2) pages.push('...');
+      for (let i = left; i <= right; i++) pages.push(i);
+      if (right < total - 1) pages.push('...');
+      pages.push(total);
+      return pages;
+    }
+
+    pager.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-page]');
+      if (!btn || btn.disabled) return;
+      currentPage = parseInt(btn.dataset.page, 10);
+      renderPage();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    search.addEventListener('input', applyFilters);
+    applyFilters();
+  })();
+</script>
+{% endblock %}

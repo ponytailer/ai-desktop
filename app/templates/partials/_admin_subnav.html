@@ -1,0 +1,32 @@
+{% set user = current_user %}
+<nav class="admin-subnav">
+  {% if user and user.has_role('super_admin') %}
+  <a href="/admin" class="{% if admin_subpage == 'users' %}active{% endif %}">
+    <span>👥</span> 用户管理
+  </a>
+  {% endif %}
+  {% if user and user.has_role('super_admin') %}
+  <a href="/admin/feedback" class="{% if admin_subpage == 'feedback' %}active{% endif %}">
+    <span>💬</span> 用户反馈
+    {% if total_feedback is defined and total_feedback > 0 %}
+    <span class="nav-badge">{{ total_feedback }}</span>
+    {% endif %}
+  </a>
+  {% endif %}
+  {% if user and user.has_role('skills_admin') %}
+  <a href="/admin/skill-reviews" class="{% if admin_subpage == 'skill_reviews' %}active{% endif %}">
+    <span>🛡</span> Skills 审核
+    {% if pending_reviews_count is defined and pending_reviews_count > 0 %}
+    <span class="nav-badge">{{ pending_reviews_count }}</span>
+    {% endif %}
+  </a>
+  {% endif %}
+  {% if user and user.has_role('key_admin') %}
+  <a href="/admin/key-reviews" class="{% if admin_subpage == 'key_reviews' %}active{% endif %}">
+    <span>🔑</span> 密钥审核
+    {% if pending_key_count is defined and pending_key_count > 0 %}
+    <span class="nav-badge">{{ pending_key_count }}</span>
+    {% endif %}
+  </a>
+  {% endif %}
+</nav>
