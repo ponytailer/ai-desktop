@@ -835,7 +835,10 @@
             <label>新额度（可选，留空=仅绑定不改动额度）</label>
             <input name="quota_limit" type="number" min="1" placeholder="例如：2000">
           </div>
-          <div class="muted" style="font-size:12px;">将把该消费组下所有成员统一绑定到此配额规则，并可统一调整规则总额度。</div>
+          <div class="batch-quota-notice">
+            <span class="notice-icon">⚠️</span>
+            <span>将把该消费组下 <b>所有成员统一绑定</b>到所选配额规则，并可统一调整规则总额度，<b>此操作会影响组内每一位成员</b>。</span>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost modal-close">取消</button>

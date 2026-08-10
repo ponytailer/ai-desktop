@@ -44,8 +44,11 @@
   </div>
   <div class="card-footer">
     <span class="publish-date">📦 {{ (v.decided_at or v.submitted_at).strftime('%Y-%m-%d') }} 上架</span>
-    <a class="btn btn-ghost" href="/api/skills/{{ v.id }}/download" download data-card-download="{{ v.id }}">
-      <span>↳</span> 安装
-    </a>
+    <div class="footer-actions">
+      <button class="btn btn-ghost" data-skill-detail="{{ v.id }}">详情</button>
+      <a class="btn btn-ghost" href="/api/skills/{{ v.id }}/download" download data-card-download="{{ v.id }}">
+        <span>↳</span> 安装
+      </a>
+    </div>
   </div>
 </article>

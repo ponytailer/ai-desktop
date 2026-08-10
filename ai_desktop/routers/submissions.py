@@ -303,6 +303,56 @@ def card_payload(version_id: int, request: Request,
     }
 
 
+@router.get("/api/skills/{version_id}/detail")
+def skill_detail(version_id: int, db: Session = Depends(get_db)):
+    """Skill 详情：元信息 + zip 内 SKILL.md 原文（前端用 marked 渲染）。"""
+    v = db.get(SkillVersion, version_id)
+    if not v:
+        raise HTTPException(404, "version not found")
+    s = v.skill
+
+    # 从附件 zip 内读取 SKILL.md（不区分大小写）
+    skill_md = ""
+    has_md = False
+    zip_path = _resolve_zip_path(v)
+    if zip_path:
+        try:
+            import zipfile
+            with zipfile.ZipFile(zip_path) as zf:
+                md_name = next(
+                    (n for n in zf.namelist() if n.upper().endswith("SKILL.MD")), None
+                )
+                if md_name:
+                    skill_md = zf.read(md_name).decode("utf-8", "replace")
+                    has_md = True
+        except (zipfile.BadZipFile, OSError):
+            skill_md = ""
+            has_md = False
+
+    return {
+        "id": v.id,
+        "name": s.name,
+        "icon": s.icon,
+        "accent_color": s.accent_color,
+        "short_description": s.short_description,
+        "category": s.category,
+        "owner_name": s.owner_name,
+        "owner_team": s.owner_team,
+        "downloads": s.downloads,
+        "likes": s.likes,
+        "version": v.version,
+        "tags": v.tags_list,
+        "summary": v.summary,
+        "detail": v.detail,
+        "changelog": v.changelog,
+        "status_label": v.status_label,
+        "scope_label": v.scope_label,
+        "submitted_at": v.submitted_at.strftime("%Y-%m-%d") if v.submitted_at else "",
+        "skill_md": skill_md,
+        "has_md": has_md,
+    }
+
+
 @router.post("/api/skills/{skill_id}/toggle-like")
 def toggle_like(skill_id: int, action: str = Form(...),
     db: Session = Depends(get_db)):

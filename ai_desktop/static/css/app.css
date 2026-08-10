@@ -932,6 +932,7 @@ h1.page-title {
   border: 1px solid #FCA5A5;
   font-size: 12px;
   cursor: pointer;
+  white-space: nowrap;          /* 表格列窄时也不换行，文字单行 */
 }
 .btn-revoke:hover { background: #FEF2F2; }
 
@@ -941,6 +942,7 @@ h1.page-title {
   align-items: center;
   gap: 8px;
   justify-content: flex-end;
+  white-space: nowrap;          /* 整组按钮不换行 */
 }
 /* 普通操作（主色）：与 btn-revoke（危险/红）区分 */
 .btn-soft {
@@ -953,8 +955,120 @@ h1.page-title {
   border: 1px solid #93C5FD;
   font-size: 12px;
   cursor: pointer;
+  white-space: nowrap;          /* 表格列窄时也不换行，文字单行 */
 }
 .btn-soft:hover { background: #EFF6FF; }
+
+/* 批量改配额提示条：醒目但不刺眼 */
+.batch-quota-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #FFFBEB;
+  border: 1px solid #FCD34D;
+  border-left: 3px solid #EF4444;
+  color: #92400E;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.batch-quota-notice .notice-icon { flex: 0 0 auto; font-size: 14px; line-height: 1.4; }
+.batch-quota-notice b { color: #B45309; }
+
+/* === Skill 详情弹窗 + markdown === */
+.footer-actions { display: inline-flex; align-items: center; gap: 8px; }
+.modal-close-x {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink-4);
+  cursor: pointer;
+  z-index: 2;
+}
+.modal-close-x:hover { color: var(--ink-1); }
+.skill-detail-loading { padding: 40px; text-align: center; color: var(--ink-3); }
+
+.skill-detail-head { display: flex; gap: 14px; align-items: center; padding: 20px 20px 6px; }
+.skill-detail-head .icon-tile { width: 44px; height: 44px; font-size: 20px; border-radius: 10px; flex: 0 0 44px; }
+.skill-detail-head h2 { font-size: 19px; }
+.skill-detail-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--ink-3); }
+.skill-detail-sub .scope-chip,
+.skill-detail-sub .status-badge { font-size: 12px; }
+
+.skill-detail-desc { margin: 8px 20px 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; }
+
+.skill-detail-meta {
+  margin: 14px 20px 0;
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 10px 14px;
+  font-size: 13px;
+}
+.skill-detail-meta > div { display: contents; }
+.skill-detail-meta .k { color: var(--ink-4); }
+.skill-detail-meta .v { color: var(--ink-1); line-height: 1.6; }
+.skill-detail-meta .chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+
+.md-title { margin: 20px 20px 0; font-size: 14px; color: var(--ink-2); letter-spacing: .3px; }
+.md-empty { margin: 10px 20px 20px; padding: 16px; text-align: center; color: var(--ink-4); background: var(--bg-mute); border-radius: 10px; font-size: 13px; }
+
+/* markdown 渲染正文 */
+.md-body {
+  margin: 10px 20px 22px;
+  padding: 16px 18px;
+  background: var(--bg-mute);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  color: var(--ink-1);
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+.md-body > *:first-child { margin-top: 0; }
+.md-body > *:last-child { margin-bottom: 0; }
+.md-body h1, .md-body h2, .md-body h3 { margin: 18px 0 8px; line-height: 1.3; }
+.md-body h1 { font-size: 19px; }
+.md-body h2 { font-size: 17px; }
+.md-body h3 { font-size: 15px; }
+.md-body p { margin: 10px 0; }
+.md-body a { color: var(--accent-blue); text-decoration: underline; }
+.md-body ul, .md-body ol { margin: 10px 0; padding-left: 22px; }
+.md-body li { margin: 4px 0; }
+.md-body code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: #EEF1F6;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: #C0392B;
+}
+.md-body pre {
+  background: #0F172A;
+  color: #E2E8F0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.md-body pre code { background: transparent; color: inherit; padding: 0; font-size: 12.5px; }
+.md-body blockquote {
+  margin: 12px 0;
+  padding: 8px 14px;
+  border-left: 3px solid var(--accent-blue);
+  background: rgba(91, 108, 255, 0.06);
+  color: var(--ink-2);
+}
+.md-body table { border-collapse: collapse; margin: 12px 0; width: 100%; font-size: 13px; }
+.md-body th, .md-body td { border: 1px solid var(--line-soft); padding: 6px 10px; text-align: left; }
+.md-body th { background: #fff; font-weight: 600; }
+.md-body img { max-width: 100%; border-radius: 8px; }
+.md-body hr { border: none; border-top: 1px solid var(--line-soft); margin: 16px 0; }
 .admin-section {
   margin-top: 16px;
   padding-top: 20px;

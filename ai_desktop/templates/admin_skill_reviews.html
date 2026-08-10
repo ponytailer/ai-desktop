@@ -63,14 +63,12 @@
           </td>
           <td>
             <span class="status-badge pending">待审核</span>
-            <div style="margin-top:6px;">
-              <span class="scope-chip scope-{{ v.scope }}">
-                {% if v.scope == 'public' %}🌍 公开{% else %}🏢 部门内可见{% endif %}
-              </span>
-            </div>
           </td>
           <td>
-            <button class="btn-review" data-review="{{ v.id }}">开始审核 →</button>
+            <div class="row-actions">
+              <button class="btn-review" data-review="{{ v.id }}">开始审核 →</button>
+              <button class="btn-soft" data-skill-detail="{{ v.id }}">详情</button>
+            </div>
           </td>
         </tr>
         {% else %}
@@ -190,4 +188,10 @@
   initTablePager('pendingBody', 'pendingPager', 10);
   initTablePager('historyBody', 'historyPager', 10);
 </script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/purify.min.js"></script>
+<script src="/static/js/skill-detail.js"></script>
 {% endblock %}
