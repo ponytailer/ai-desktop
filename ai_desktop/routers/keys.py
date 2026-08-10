@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from ..aliyun_aigw import list_consumers, list_quota_rules
 from ..database import get_db
 from ..deps import ROLE_KEY_ADMIN, ROLE_SKILLS_ADMIN, ROLE_SUPER_ADMIN, CurrentUser
 from ..models import (
@@ -131,9 +132,11 @@ def approve_key(
     request: Request,
     key_id: int,
     note: str = Form(""),
+    consumer_id: str = Form(""),
+    quota_rule_id: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    """审核通过并分配密钥。"""
+    """审核通过并分配密钥（可绑定一个 AI Gateway 消费组与配额规则）。"""
     user: CurrentUser = request.state.current_user
     if not _can_review_key(user):
         raise HTTPException(403, "无权限：需要密钥管理员角色")
@@ -144,13 +147,50 @@ def approve_key(
     if k.status != KEY_PENDING:
         raise HTTPException(400, f"当前状态「{k.status_label}」不允许审核")
 
+    consumer_id = consumer_id.strip()
+    consumer_name = ""
+    if consumer_id:
+        # 最佳努力：尝试解析消费组名称用于展示（网关不可达时仅存 ID）
+        try:
+            cons = list_consumers()
+            match = next(
+                (c for c in cons if str(c.get("consumerId")) == consumer_id), None
+            )
+            consumer_name = match.get("name", "") if match else ""
+        except Exception:  # noqa: BLE001
+            consumer_name = ""
+
+    quota_rule_id = quota_rule_id.strip()
+    quota_rule_name = ""
+    if quota_rule_id:
+        try:
+            rules = list_quota_rules()
+            rmatch = next(
+                (r for r in rules if str(r.get("ruleId")) == quota_rule_id), None
+            )
+            quota_rule_name = rmatch.get("ruleName", "") if rmatch else ""
+        except Exception:  # noqa: BLE001
+            quota_rule_name = ""
+
     k.api_key_value = _generate_api_key()
     k.status = KEY_APPROVED
     k.reviewed_by = user.name
     k.reviewed_at = datetime.utcnow()
     k.review_note = note.strip()
+    k.consumer_id = consumer_id or None
+    k.consumer_name = consumer_name or None
+    k.quota_rule_id = quota_rule_id or None
+    k.quota_rule_name = quota_rule_name or None
     db.commit()
-    return {"ok": True, "status": k.status, "api_key": k.api_key_value}
+    return {
+        "ok": True,
+        "status": k.status,
+        "api_key": k.api_key_value,
+        "consumer_id": k.consumer_id,
+        "consumer_name": k.consumer_name,
+        "quota_rule_id": k.quota_rule_id,
+        "quota_rule_name": k.quota_rule_name,
+    }
 
 
 @router.post("/api/keys/{key_id}/reject")

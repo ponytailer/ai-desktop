@@ -6,8 +6,8 @@
     AIDesktop
   </a>
   <nav class="nav-tabs">
-    <a href="/" class="{% if page == 'discover' %}active{% endif %}">
-      <span>🧭</span> 发现
+    <a href="/discover" class="{% if page == 'discover' %}active{% endif %}">
+      <span>🧭</span> 首页
     </a>
     <a href="/my-uploads" class="{% if page == 'my_uploads' %}active{% endif %}">
       <span>🗂</span> 我的上传
@@ -27,9 +27,6 @@
     {% endif %}
   </nav>
   <div class="nav-actions">
-    <button class="btn btn-dark" data-upload-skill>
-      <span style="font-size: 14px;">＋</span> 上传 Skill
-    </button>
     <div class="user-dropdown" id="userDropdown">
       <button class="user-chip user-chip-trigger" type="button">
         <span class="avatar">{{ user.avatar_label if user else '?' }}</span>
@@ -37,14 +34,17 @@
           <span class="top">{{ user.id if user else '' }}</span>
           <span class="bot">
             {{ user.name if user else '' }}
-            {% if user and user.roles %}
-            <span class="role-tag">{{ user.role_labels | join(' · ') }}</span>
+            {% if user and user.highest_role_label %}
+            <span class="role-tag">{{ user.highest_role_label }}</span>
             {% endif %}
           </span>
         </div>
         <span class="user-dropdown-arrow">▾</span>
       </button>
       <div class="user-dropdown-menu">
+        <a class="user-dropdown-item" href="/aigw">
+          <span>📊</span> 我的用量
+        </a>
         <button class="user-dropdown-item" data-action="feedback">
           <span>💬</span> 反馈
         </button>

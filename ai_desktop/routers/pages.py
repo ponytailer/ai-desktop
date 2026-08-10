@@ -40,7 +40,14 @@ def _common_ctx(db: Session, request: Request) -> dict:
 
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request, db: Session = Depends(get_db)):
+def index_redirect():
+    """默认主页为发现页（/discover）。"""
+    return RedirectResponse(url="/discover", status_code=302)
+
+
+@router.get("/discover", response_class=HTMLResponse)
+def discover(request: Request, db: Session = Depends(get_db)):
+    """发现页（原首页）。"""
     ctx = _common_ctx(db, request)
     skills = db.query(Skill).order_by(Skill.downloads.desc()).all()
     published_skills = [s for s in skills if s.published_version]

@@ -21,10 +21,10 @@
     {% endif %}
   </a>
   {% endif %}
-  {% if user and user.has_role('key_admin') %}
+  {% if user and (user.has_role('key_admin') or user.has_role('super_admin')) %}
   <a href="/admin/key-reviews" class="{% if admin_subpage == 'key_reviews' %}active{% endif %}">
     <span>🔑</span> 密钥审核
-    {% if pending_key_count is defined and pending_key_count > 0 %}
+    {% if pending_key_count is defined and pending_key_count > 0 and user.has_role('key_admin') %}
     <span class="nav-badge">{{ pending_key_count }}</span>
     {% endif %}
   </a>

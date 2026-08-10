@@ -12,13 +12,19 @@
 
 ## 功能特性
 
-- **发现页（首页）**：已发布 Skill 卡片瀑布流，按下载量排序，支持按分类筛选、点赞、查看详情与安装。
+- **发现页**：已发布 Skill 卡片瀑布流，按下载量排序，支持按分类筛选、点赞、查看详情与安装。
 - **Skill 提交与版本管理**：上传 Skill（含 `.zip` 附件），支持草稿 / 待审核 / 已发布 / 已拒绝 / 已替代多状态；可从已发布版本「迭代」出新版本。
 - **我的上传**：贡献者跟踪自己提交的所有版本及其状态（全部 / 待审核 / 草稿 / 已通过）。
 - **Skills 审核后台**：管理员对待审核版本进行通过 / 拒绝，通过时可标记精选（featured），自动将旧版本置为「已替代」。
 - **API Key 管理**：员工申请 API Key，密钥管理员审核分配 / 拒绝 / 吊销（密钥脱敏展示）。
 - **超级管理员后台**：员工与角色管理（超级管理员 / Skills 管理员 / 密钥管理员）、Skill 审核、密钥审核、用户反馈四大子模块。
 - **用户反馈**：任意登录用户可提交反馈，超级管理员可查看并标记已读。
+- **阿里云 AI Gateway 对接**：消费者（Consumer）的创建 / 删除 / 列表管理；**配额规则（QuotaRule）的 CRUD**（创建 / 编辑 / 删除 / 列表）；以及消费者在配额规则下的**积分用量看板**（双图表：配额使用占比环形图、各模型输入/输出/缓存积分消耗柱状图）。
+  - **用量看板为纯个人视角**：每个登录用户看到的是**自己**已分配密钥所绑定消费组的用量（密钥由管理员分配时绑定消费组），页面不暴露任何管理员视角控件。
+  - **密钥分配绑定消费组**：管理员在「密钥审核 → 分配密钥」时，可从下拉列表选择一个 AI Gateway 消费组进行分配，分配记录会记录消费组 ID 与名称。
+  - **配额规则管理（仅超级管理员）**：在「密钥审核 → 配额管理」中创建 / 编辑 / 删除配额规则（维度 token/credit、周期 日/周/月、周期额度），规则可绑定消费者。
+  - **分配密钥绑定配额**：分配密钥时可选配额规则（下拉，从网关拉取），记录配额规则 ID 与名称。
+  - **消费组批量改配额**：在「密钥审核 → 消费组管理」中，可一键把某消费组下所有成员统一绑定到指定配额规则，并可统一调整规则总额度。
 - **演示数据**：首次启动自动写入种子数据；另有更丰富的 `mock_data` 注入脚本用于演示。
 
 ---
@@ -38,39 +44,6 @@
 
 ---
 
-## 项目结构
-
-```
-ai-desktop/
-├── ai_desktop/
-│   ├── __init__.py
-│   ├── main.py            # FastAPI 入口：create_app()、认证中间件、/health
-│   ├── database.py        # SQLite 引擎、Session 工厂、init_db()
-│   ├── deps.py            # 角色常量、会话 token（HMAC 签名）、CurrentUser、公开路径
-│   ├── models.py          # ORM 模型：Skill / SkillVersion / Category / ApiKey / Employee / Feedback
-│   ├── schemas.py         # Pydantic 校验模型（NewSkillSubmission / ReviewDecision）
-│   ├── seed.py            # 首次启动自动写入的种子数据（幂等）
-│   ├── mock_data.py       # 可手动运行的更丰富演示数据注入器
-│   ├── routers/
-│   │   ├── auth.py        # 登录 / 登出页面与 API
-│   │   ├── pages.py       # 发现页、我的上传、/reviews 重定向
-│   │   ├── submissions.py # Skill 上传 / 提交 / 撤回 / 迭代 / 下载 / 点赞
-│   │   ├── reviews.py     # Skill 审核 API
-│   │   ├── keys.py        # API Key 申请与审核（页面 + API）
-│   │   ├── admin.py       # 用户 / 角色管理、各审核子页面
-│   │   └── feedback.py    # 用户反馈提交与查看
-│   ├── static/            # CSS / JS 静态资源
-│   └── templates/         # Jinja2 模板（base、首页、各后台页、局部组件）
-├── data/                  # 运行时数据（SQLite 库 + 附件），建议加入 .gitignore
-│   ├── skillhub.db
-│   └── attachments/<skill_id>/<version_id>.zip
-├── pyproject.toml
-├── uv.lock
-└── LICENSE                # Apache License 2.0
-```
-
----
-
 ## 快速开始
 
 ### 环境要求
@@ -80,7 +53,7 @@ ai-desktop/
 
 ### 安装与运行
 
-**方式一：使用 uv（推荐）**
+** 使用 uv（推荐）**
 
 ```bash
 # 在项目根目录
@@ -88,14 +61,6 @@ uv sync                 # 根据 pyproject.toml / uv.lock 安装依赖
 uv run uvicorn ai_desktop.main:app --reload --port 8001
 ```
 
-**方式二：使用 pip + 虚拟环境**
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-uvicorn ai_desktop.main:app --reload --port 8001
-```
 
 ### 访问
 
@@ -139,93 +104,7 @@ uv run python -m ai_desktop.mock_data
 
 权限通过 `CurrentUser.has_role()` 校验，`super_admin` 隐含拥有所有权限。
 
----
-
-## 数据模型
-
-核心实体（ORM，见 `ai_desktop/models.py`）：
-
-- **Skill**：技能主表（市场卡片展示字段）——`name`、`icon`、`accent_color`、`short_description`、`category`、`owner_name`、`owner_team`、`downloads`、`likes`、`is_featured`。
-- **SkillVersion**：版本表，承载审核流程——`version`、`summary`、`detail`、`changelog`、`scope`（公开 / 部门内可见）、`status`、`tags`（JSON 字符串）、`attachment_path`（zip）、`submitted_by` / `decided_by` / `decision_note`。
-- **Category**：首页分类下拉选项。
-- **ApiKey**：密钥申请记录——`applicant_id`、`applicant_name`、`purpose`、`status`、`api_key_value`（脱敏展示）、`reviewed_by`。
-- **Employee**：员工表——`id`（工号）、`name`、`department`、`roles`（JSON 字符串）。
-- **Feedback**：用户反馈——`content`、`employee_id`、`employee_name`、`is_read`。
-
-### SkillVersion 状态机
-
-```
-draft ──submit──▶ pending ──approve──▶ published ──(新版本 approve)──▶ superseded
-                     │
-                     └───────reject────────▶ rejected
-pending ──withdraw──▶ draft
-```
-
----
-
-## API 一览
-
-### 认证与基础
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/login` | 登录页面 |
-| POST | `/api/auth/login` | 登录，签发会话 Cookie |
-| GET | `/api/auth/logout` | 登出，清除 Cookie |
-| GET | `/health` | 健康检查 |
-
-### 页面路由
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/` | 发现页（已发布 Skill 市场） |
-| GET | `/my-uploads` | 我的上传 |
-| GET | `/keys` | API Key 申请与管理页 |
-| GET | `/admin` | 超级管理员后台（用户 / 角色） |
-| GET | `/admin/skill-reviews` | Skills 审核子页（`skills_admin`） |
-| GET | `/admin/key-reviews` | 密钥审核子页（`key_admin`） |
-| GET | `/admin/feedback` | 用户反馈子页（`super_admin`） |
-
-### Skill 提交与版本
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/api/skills/check-name` | 新建时名称查重 |
-| POST | `/api/skills/upload` | 上传 / 创建 Skill（`publish_now` 可跳过审核直接上架） |
-| POST | `/api/skills/{id}/submit` | 草稿 / 已拒绝 → 待审核 |
-| POST | `/api/skills/{id}/withdraw` | 待审核 → 草稿（撤回） |
-| POST | `/api/skills/{id}/edit` | 编辑版本并重新提交审核 |
-| GET | `/api/skills/{id}/download` | 下载已发布版本 zip（计数 +1） |
-| GET | `/api/skills/{id}/card` | 安装弹窗所需的卡片 JSON |
-| POST | `/api/skills/{id}/toggle-like` | 点赞 / 取消点赞 |
-| POST | `/api/skills/{id}/iterate` | 基于已发布版本创建新迭代版本 |
-
-### 审核
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/api/reviews/{id}` | 审核弹窗 payload |
-| POST | `/api/reviews/{id}/decide` | 通过 / 拒绝（`decision=approve｜reject`，拒绝必填意见） |
-
-### API Key
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| POST | `/api/keys/apply` | 申请密钥（同一用户仅允许一个在用密钥） |
-| POST | `/api/keys/{id}/approve` | 审核通过并分配密钥（`key_admin`） |
-| POST | `/api/keys/{id}/reject` | 拒绝申请（`key_admin`，必填说明） |
-| POST | `/api/keys/{id}/revoke` | 吊销已分配密钥（本人或 `key_admin`，必填原因） |
-
-### 管理与反馈
-
-| 方法 | 路径 | 说明 |
-| --- | --- | --- |
-| GET | `/api/employees/{id}` | 员工详情（`super_admin`） |
-| POST | `/api/employees/{id}/roles` | 修改角色（`super_admin`） |
-| POST | `/api/employees` | 新建员工（`super_admin`） |
-| POST | `/api/feedback` | 提交反馈（任意登录用户） |
-| POST | `/api/feedback/{id}/read` | 单条标记已读（`super_admin`） |
-| POST | `/api/feedback/read` | 批量标记已读（`super_admin`） |
+> 导航栏右上角只展示当前用户**权限最高的单个角色**（优先级 `super_admin` > `key_admin` > `skills_admin`），而非全部角色拼接展示。
 
 ---
 
@@ -235,6 +114,39 @@ pending ──withdraw──▶ draft
 - **会话有效期**：`SESSION_MAX_AGE = 30 天`；登录页勾选「记住我」后写入持久 Cookie，否则为 Session Cookie。
 - **数据库路径**：`data/skillhub.db`（SQLite），附件存于 `data/attachments/`，均在首次运行时自动创建。
 - **公开路径**：`/login`、`/api/auth/login`、`/api/auth/logout`、`/health` 及 `/static/` 无需登录即可访问。
+
+### 阿里云 AI Gateway 对接配置
+
+对接阿里云云原生 API 网关（APIG，API 版本 `2024-03-27`），客户端实现在 `ai_desktop/aliyun_aigw.py`，路由在 `ai_desktop/routers/aigw.py`。**用量看板全员可见，且为纯个人视角**（只展示本人绑定消费组的用量，页面无任何管理员覆盖入口）；**消费者管理**已并入「管理后台 → 密钥审核 → 消费组管理」标签页（仅超级管理员可创建/删除）。
+
+配置（环境变量，也可写入项目根目录 `.env`，已提供 `.env.example` 模板；`.env` 已被 `.gitignore` 忽略）：
+
+| 变量 | 说明 | 默认值 |
+| --- | --- | --- |
+| `ALIYUN_ACCESS_KEY_ID` | 阿里云 AccessKey ID | 空（缺省时自动走 mock） |
+| `ALIYUN_ACCESS_KEY_SECRET` | 阿里云 AccessKey Secret | 空 |
+| `ALIYUN_REGION` | 地域 | `cn-hangzhou` |
+| `ALIYUN_APIG_HOST` | APIG 控制面域名 | `apig.{region}.aliyuncs.com` |
+| `ALIYUN_APIG_GATEWAY_ID` | 网关 ID（配额用量必需） | 空 |
+| `ALIYUN_APIG_QUOTA_RULE_ID` | 配额规则 ID（配额用量必需） | 空 |
+| `ALIYUN_APIG_SUBJECT_ID` | 默认查询主体（消费者）ID | 空 |
+| `AIGW_USE_MOCK` | 是否使用 mock 数据：`1` 开 / `0` 关 | 自动：无 AK/SK 时为 `1` |
+
+> **Mock / 生产切换**：本地无真实凭据时（`ALIYUN_ACCESS_KEY_ID` 等未配置，或 `AIGW_USE_MOCK=1`）走 mock 数据分支，返回结构与真实接口一致，可直接驱动图表与列表展示。
+> **上生产时**：设 `AIGW_USE_MOCK=0`、配置真实 AK/SK 与网关/配额规则 ID，并将 `ai_desktop/aliyun_aigw.py` 中 `_mock_*` 分支整段删除或注释即可。
+
+已对接接口：
+
+| 阿里云 API | 本项目方法 / 路由 | 说明 |
+| --- | --- | --- |
+| `CreateConsumer` (POST `/v1/consumers`) | `POST /api/aigw/consumers` | 创建消费者 |
+| `DeleteConsumer` (DELETE `/v1/consumers/{id}`) | `DELETE /api/aigw/consumers/{id}` | 删除消费者 |
+| `ListConsumers` (GET `/v1/consumers`) | `GET /api/aigw/consumers` | 列出消费者（管理页用） |
+| `GetGatewayQuotaRuleSubjectUsage` (GET `/v1/gateways/{gwId}/quota-rules/{ruleId}/subjects/{subjectId}/usage`) | `GET /api/aigw/quota/usage` | 获取积分用量（驱动图表） |
+
+页面：`/`（默认主页，重定向到 `/discover` 发现页）、`/discover`（发现页，导航栏第一个 Tab / 默认主页）、`/aigw`（积分用量看板，由四列概览指标（已用 / 总配额 / 剩余 / 使用率）+ 两个图表组成，**全员可见、纯个人视角**，默认展示本人绑定消费组的用量；入口在右上角用户下拉「我的用量」，**不占用**导航栏 Tab）、`/admin/key-reviews`（密钥审核页，其中「消费组管理」Tab 负责消费者的创建/删除/列表，**仅超级管理员可操作**，入口：`/aigw/consumers` 会重定向至此）。
+
+**本人用量如何关联**：在「密钥审核 → 分配密钥」时，管理员从下拉选择某个 AI Gateway 消费组并分配；该密钥的 `consumer_id` 即成为持有人的用量主体。访问 `/aigw` 时后端按当前登录用户查找其已分配密钥绑定的消费组，自动拉取对应积分用量。未绑定消费组的用户会看到友好的空状态提示（演示/Mock 模式下为保证图表可展示，会用派生 subject 渲染示例数据）。
 
 ---
 

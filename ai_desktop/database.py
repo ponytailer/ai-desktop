@@ -44,6 +44,29 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
 
+    # 轻量迁移：为已存在的表补齐新增列（SQLite 不擅长 ALTER，逐个判断）
+    _migrate_columns()
+
     from .seed import seed_if_empty
 
     seed_if_empty()
+
+
+def _migrate_columns() -> None:
+    """给现有表补加在 ORM 中新增、但真实库里尚不存在的列。"""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        # api_keys: consumer_id / consumer_name
+        if "api_keys" in inspector.get_table_names():
+            existing = {c["name"] for c in inspector.get_columns("api_keys")}
+            for col, ddl in (
+                ("consumer_id", "VARCHAR(80)"),
+                ("consumer_name", "VARCHAR(120)"),
+                ("quota_rule_id", "VARCHAR(80)"),
+                ("quota_rule_name", "VARCHAR(120)"),
+            ):
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE api_keys ADD COLUMN {col} {ddl}"))
+

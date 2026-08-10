@@ -21,6 +21,13 @@ ROLE_SUPER_ADMIN = "super_admin"      # 超级管理员：全部权限
 
 ALL_ROLES = (ROLE_SKILLS_ADMIN, ROLE_KEY_ADMIN, ROLE_SUPER_ADMIN)
 
+# 角色权限优先级（数值越大权限越高），用于「右上角只显示权限最高的角色」
+ROLE_PRIORITY = {
+    ROLE_SUPER_ADMIN: 3,
+    ROLE_KEY_ADMIN: 2,
+    ROLE_SKILLS_ADMIN: 1,
+}
+
 ROLE_LABELS = {
     ROLE_SKILLS_ADMIN: "Skills 管理员",
     ROLE_KEY_ADMIN: "密钥管理员",
@@ -47,6 +54,19 @@ class CurrentUser:
         """角色中文名称列表。"""
         return [ROLE_LABELS.get(r, r) for r in self.roles]
 
+    @property
+    def highest_role(self) -> str | None:
+        """权限最高的角色 key（super_admin > key_admin > skills_admin）。"""
+        if not self.roles:
+            return None
+        return max(self.roles, key=lambda r: ROLE_PRIORITY.get(r, 0))
+
+    @property
+    def highest_role_label(self) -> str | None:
+        """权限最高的角色中文名（用于右上角展示单个角色）。"""
+        role = self.highest_role
+        return ROLE_LABELS.get(role, role) if role else None
+
 
 # ---------- 默认用户（admin 登录后映射到此）----------
 
@@ -58,6 +78,9 @@ CURRENT_USER = CurrentUser(
 )
 
 # 演示用：其他用户（密钥申请记录里会用到）
+# 普通测试用户（无管理角色），登录账密 test / test
+TEST_USER = CurrentUser(id="10020099", name="测试用户", avatar_label="99", roles=())
+
 DEMO_USERS = {
     "48890023": CURRENT_USER,
     "10020001": CurrentUser(id="10020001", name="张伟", avatar_label="10", roles=()),
@@ -65,6 +88,7 @@ DEMO_USERS = {
     "10020003": CurrentUser(
         id="10020003", name="王强", avatar_label="10", roles=(ROLE_SKILLS_ADMIN,)
     ),
+    "10020099": TEST_USER,
 }
 
 
@@ -77,6 +101,7 @@ SESSION_MAX_AGE = 30 * 24 * 3600  # 30 天（秒）
 # 测试账号：username -> (password, CurrentUser)
 TEST_ACCOUNTS = {
     "admin": ("admin", CURRENT_USER),
+    "test": ("test", TEST_USER),
 }
 
 

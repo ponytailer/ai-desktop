@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}用量看板 · AI Gateway{% endblock %}
+
+{% block content %}
+<div class="page">
+  {% if use_mock %}
+  <div class="banner banner-warn" style="margin-bottom:18px;">
+    ⚠️ 当前为 <b>MOCK 演示数据</b>（未配置真实 AK/SK 或 AIGW_USE_MOCK=1）。上生产请配置凭据并关闭 Mock。
+  </div>
+  {% endif %}
+
+  <!-- 概览指标 -->
+  <section class="stat-row is-4" id="overviewStats">
+    <div class="stat-cell">
+      <div class="v" id="statUsed">—</div>
+      <div class="l">已用积分</div>
+    </div>
+    <div class="stat-cell">
+      <div class="v" id="statTotal">—</div>
+      <div class="l">总配额</div>
+    </div>
+    <div class="stat-cell">
+      <div class="v" id="statRemain">—</div>
+      <div class="l">剩余积分</div>
+    </div>
+    <div class="stat-cell">
+      <div class="v" id="statRate">—</div>
+      <div class="l">使用率</div>
+    </div>
+  </section>
+
+  <!-- 图表 -->
+  <section class="chart-grid">
+    <div class="card chart-card">
+      <div class="section-head"><h2>配额使用占比</h2></div>
+      <div class="chart-wrap"><canvas id="quotaChart"></canvas></div>
+    </div>
+    <div class="card chart-card">
+      <div class="section-head"><h2>各模型积分消耗</h2></div>
+      <div class="chart-wrap"><canvas id="modelChart"></canvas></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const quotaCanvas = document.getElementById('quotaChart');
+  const modelCanvas = document.getElementById('modelChart');
+  if (!quotaCanvas || !modelCanvas) return;
+
+  let quotaChart, modelChart;
+
+  // 始终拉取「本人」用量（后端按当前登录用户解析消费组）
+  async function loadUsage() {
+    const resp = await fetch('/api/aigw/quota/usage', { headers: { 'Accept': 'application/json' } });
+    const payload = await resp.json().catch(() => ({}));
+    if (!resp.ok || payload.ok === false) {
+      renderEmpty(payload.message || ('获取用量失败：' + (payload.detail || resp.status)));
+      return;
+    }
+    render(payload.usage);
+  }
+
+  function renderEmpty(message) {
+    if (quotaChart) { quotaChart.destroy(); quotaChart = null; }
+    if (modelChart) { modelChart.destroy(); modelChart = null; }
+    document.getElementById('statUsed').textContent = '—';
+    document.getElementById('statTotal').textContent = '—';
+    document.getElementById('statRemain').textContent = '—';
+    document.getElementById('statRate').textContent = '—';
+    const wrap = document.querySelector('.chart-grid');
+    wrap.querySelectorAll('canvas').forEach((c) => {
+      const box = c.parentElement;
+      box.innerHTML = '';
+      const tip = document.createElement('div');
+      tip.className = 'muted';
+      tip.style.cssText = 'padding:48px 12px; text-align:center;';
+      tip.textContent = message || '暂无数据';
+      box.appendChild(tip);
+    });
+  }
+
+  function render(usage) {
+    const d = usage && usage.data ? usage.data : {};
+    const used = Number(d.usedAmount || 0);
+    const total = Number(d.totalQuota || 0);
+    const remain = total - used;            // 可能为负数（超限）
+    const over = !!d.overLimit;
+    const rate = total > 0 ? Math.round(used / total * 100) : 0;
+
+    document.getElementById('statUsed').textContent = used.toLocaleString();
+    document.getElementById('statTotal').textContent = total.toLocaleString();
+    document.getElementById('statRemain').textContent = (remain < 0 ? 0 : remain).toLocaleString();
+    const rateEl = document.getElementById('statRate');
+    rateEl.textContent = rate + '%';
+    rateEl.className = 'v' + ((over || rate >= 100) ? ' over' : '');
+
+    // 图1：配额使用占比（环形）
+    const qData = [used, Math.max(total - used, 0)];
+    const qLabels = ['已用', '剩余'];
+    const qColors = [over ? '#e5484d' : '#6366f1', '#e2e8f0'];
+    if (quotaChart) quotaChart.destroy();
+    quotaChart = new Chart(quotaCanvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: qLabels,
+        datasets: [{ data: qData, backgroundColor: qColors, borderWidth: 0 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: (c) => `${c.label}: ${c.parsed.toLocaleString()}（${total ? Math.round(c.parsed / total * 100) : 0}%）` } },
+        },
+      },
+    });
+
+    // 图2：各模型积分消耗（分组柱状）
+    const items = (d.details && d.details.items) || [];
+    const models = items.map((i) => i.model);
+    const input = items.map((i) => i.inputAmount || 0);
+    const output = items.map((i) => i.outputAmount || 0);
+    const cached = items.map((i) => i.cachedAmount || 0);
+
+    if (modelChart) modelChart.destroy();
+    modelChart = new Chart(modelCanvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: models.length ? models : ['无数据'],
+        datasets: [
+          { label: '输入', data: models.length ? input : [0], backgroundColor: '#6366f1' },
+          { label: '输出', data: models.length ? output : [0], backgroundColor: '#22c55e' },
+          { label: '缓存', data: models.length ? cached : [0], backgroundColor: '#f59e0b' },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: '积分' } } },
+      },
+    });
+  }
+
+  loadUsage();
+})();
+</script>
+{% endblock %}

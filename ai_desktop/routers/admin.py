@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..aliyun_aigw import list_consumers
 from ..database import get_db
 from ..deps import ALL_ROLES, ROLE_KEY_ADMIN, ROLE_SKILLS_ADMIN, ROLE_SUPER_ADMIN, CurrentUser
 from ..models import (
@@ -136,8 +137,9 @@ def admin_skill_reviews(request: Request, db: Session = Depends(get_db)):
 def admin_key_reviews(request: Request, db: Session = Depends(get_db)):
     """密钥审核管理子页面（仅 key_admin / super_admin）。"""
     user: CurrentUser = request.state.current_user
-    if not user.has_role(ROLE_KEY_ADMIN):
+    if not (user.has_role(ROLE_KEY_ADMIN) or user.has_role(ROLE_SUPER_ADMIN)):
         raise HTTPException(403, "无权限访问密钥审核")
+    is_super_admin = user.has_role(ROLE_SUPER_ADMIN)
 
     ctx = _common_ctx(db, request)
     pending_review = (
@@ -159,6 +161,12 @@ def admin_key_reviews(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
+    # 密钥分配时可选的 AI Gateway 消费组（网关不可达时为空，不影响审核）
+    try:
+        consumers = list_consumers()
+    except Exception:  # noqa: BLE001
+        consumers = []
+
     return templates.TemplateResponse(
         request,
         "admin_key_reviews.html",
@@ -170,6 +178,8 @@ def admin_key_reviews(request: Request, db: Session = Depends(get_db)):
             "pending_review": pending_review,
             "reviewed_history": reviewed_history,
             "active_keys": active_keys,
+            "consumers": consumers,
+            "is_super_admin": is_super_admin,
         },
     )
 
