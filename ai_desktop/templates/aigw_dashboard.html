@@ -99,10 +99,16 @@
     rateEl.textContent = rate + '%';
     rateEl.className = 'v' + ((over || rate >= 100) ? ' over' : '');
 
-    // 图1：配额使用占比（环形）
-    const qData = [used, Math.max(total - used, 0)];
-    const qLabels = ['已用', '剩余'];
-    const qColors = [over ? '#e5484d' : '#6366f1', '#e2e8f0'];
+    // 图1：配额使用占比（环形）——已用部分拆分「缓存」+「其他已用」以体现缓存占比
+    const cachedTotal = Number(d.cachedAmount || 0);
+    const nonCacheUsed = Math.max(used - cachedTotal, 0);
+    const remainSeg = Math.max(total - used, 0);
+    const cachePct = total > 0 ? Math.round(cachedTotal / total * 100) : 0;
+    const qData = [cachedTotal, nonCacheUsed, remainSeg];
+    const qLabels = [`缓存 ${cachePct}%`, '其他已用', '剩余'];
+    const qColors = over
+      ? ['#f59e0b', '#e5484d', '#e2e8f0']   // 超限：缓存仍用橙色，其余已用红色
+      : ['#f59e0b', '#6366f1', '#e2e8f0'];  // 正常：缓存橙、其他已用靛蓝、剩余浅灰
     if (quotaChart) quotaChart.destroy();
     quotaChart = new Chart(quotaCanvas.getContext('2d'), {
       type: 'doughnut',
@@ -116,7 +122,7 @@
         cutout: '62%',
         plugins: {
           legend: { position: 'bottom' },
-          tooltip: { callbacks: { label: (c) => `${c.label}: ${c.parsed.toLocaleString()}（${total ? Math.round(c.parsed / total * 100) : 0}%）` } },
+          tooltip: { callbacks: { label: (c) => `${c.label.split(' ')[0]}: ${c.parsed.toLocaleString()}（${total ? Math.round(c.parsed / total * 100) : 0}%）` } },
         },
       },
     });

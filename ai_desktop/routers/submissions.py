@@ -354,11 +354,12 @@ def download_attachment(version_id: int, db: Session = Depends(get_db)):
 
 @router.post("/api/skills/{version_id}/install")
 def install_skill(version_id: int, target: str = Form(...),
-    db: Session = Depends(get_db)):
+    custom_path: str = Form(""), db: Session = Depends(get_db)):
     """安装 skill 到本地 skills 目录（WorkBuddy / Claude Code）。
 
     - target=workbuddy → ~/.workbuddy/skills/{name}
     - target=claudecode → ~/.claude/skills/{name}
+    - custom_path 可选：覆盖默认目录，支持 ~ 简写，必须是绝对路径
     解压采用智能去顶层目录，返回目标路径与文件数。
     """
     v = db.get(SkillVersion, version_id)
@@ -373,7 +374,14 @@ def install_skill(version_id: int, target: str = Form(...),
     if not zip_path:
         raise HTTPException(404, "附件不存在")
 
-    dest = _install_target_dir(target, v.skill.name)
+    if custom_path and custom_path.strip():
+        # 用户自定义路径：展开 ~ 并校验为绝对路径
+        dest = Path(custom_path.strip()).expanduser()
+        if not dest.is_absolute():
+            raise HTTPException(400, "自定义路径必须是绝对路径（可省略前导 ~）")
+        dest = dest.resolve()
+    else:
+        dest = _install_target_dir(target, v.skill.name)
     # 已存在同名目录：先整体移除再重新解压，保证幂等（仅限该 skill 子目录）
     if dest.exists():
         shutil.rmtree(dest)
@@ -399,6 +407,8 @@ def card_payload(version_id: int, request: Request,
     v = db.get(SkillVersion, version_id)
     if not v or v.status != STATUS_PUBLISHED:
         raise HTTPException(404)
+    # 按当前系统计算真实家目录（Windows 为 C:\Users\...，非 ~ 简写），供前端预填默认路径
+    home = Path.home()
     return {
         "skill_id": v.skill_id,
         "name": v.skill.name,
@@ -408,6 +418,10 @@ def card_payload(version_id: int, request: Request,
         "accent_color": v.skill.accent_color,
         "download_url": f"/api/skills/{v.id}/download",
         "install_command": f"npx @company/skillhub add {request.url.scheme}://{request.url.netloc}/api/skills/{v.id}/download",
+        "install_paths": {
+            "workbuddy": str(home / ".workbuddy" / "skills" / _sanitize_segment(v.skill.name)),
+            "claudecode": str(home / ".claude" / "skills" / _sanitize_segment(v.skill.name)),
+        },
     }
 
 
