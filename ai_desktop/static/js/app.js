@@ -814,7 +814,7 @@ document.addEventListener('click', (e) => {
 
   const tpl = `
     <div class="modal-head">
-      <h3>💬 意见反馈</h3>
+      <h3>💬 建议反馈</h3>
       <button class="modal-close" aria-label="关闭">×</button>
     </div>
     <div class="modal-body">
