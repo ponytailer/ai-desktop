@@ -36,7 +36,8 @@
     <button class="todo-composer-btn" type="submit">添加</button>
   </form>
 
-  <!-- 看板：双列 -->
+  <!-- 底部：左 = 待办双列  右 = 快捷方式 -->
+  <div class="home-bottom">
   <div class="todo-board">
     <section class="todo-col">
       <header class="todo-col-head">
@@ -112,9 +113,238 @@
       </ul>
     </section>
   </div>
+
+  <!-- 右侧快捷方式侧栏 -->
+  <aside class="quick-access" aria-label="快捷方式">
+    <header class="qa-head">
+      <div>
+        <h3 class="qa-title">快捷方式</h3>
+        <p class="qa-sub">点击直达常用应用</p>
+      </div>
+      <button class="qa-add-btn" data-qa-add type="button" title="添加快捷方式" aria-label="添加快捷方式">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>
+      </button>
+    </header>
+    <div class="qa-grid" id="qaGrid">
+      <!-- 由 JS 渲染 -->
+    </div>
+    <p class="qa-tip" id="qaTip">没有启动时会弹出确认框</p>
+  </aside>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script src="/static/js/todo-board.js"></script>
+<script>
+(function () {
+  // ---------- 数据 ----------
+  const LS_KEY = 'aid_quick_access_v1';
+  const DEFAULTS = [
+    { id: 'dingtalk', name: '钉钉', icon: '💬', scheme: 'dingtalk://', web: 'https://im.dingtalk.com/' },
+    { id: 'workbuddy', name: 'WorkBuddy', icon: '🐝', scheme: 'workbuddy://', web: 'https://workbuddy.cn/' },
+  ];
+  function loadList() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return DEFAULTS.slice();
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr) || arr.length === 0) return DEFAULTS.slice();
+      return arr;
+    } catch (_) { return DEFAULTS.slice(); }
+  }
+  function saveList(list) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+  let list = loadList();
+
+  // ---------- 渲染 ----------
+  const grid = document.getElementById('qaGrid');
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function render() {
+    if (!grid) return;
+    grid.innerHTML = list.map((it, idx) => `
+      <div class="qa-card" data-idx="${idx}" data-launch
+           data-name="${escapeHtml(it.name)}"
+           data-scheme="${escapeHtml(it.scheme || '')}"
+           data-web="${escapeHtml(it.web || '')}"
+           title="${escapeHtml(it.name)}${it.scheme ? '（已注册协议：' + it.scheme + '）' : ''}">
+        <span class="qa-icon">${escapeHtml(it.icon || '🔗')}</span>
+        <span class="qa-name">${escapeHtml(it.name)}</span>
+        ${it.id ? '' : `<button class="qa-remove" data-qa-remove data-idx="${idx}" title="删除" aria-label="删除"><svg viewBox="0 0 20 20"><path d="M6 6l8 8M14 6l-8 8"/></svg></button>`}
+      </div>
+    `).join('') + `
+      <button class="qa-card qa-add" data-qa-add type="button" title="添加快捷方式">
+        <span class="qa-icon qa-icon-add">＋</span>
+        <span class="qa-name">添加</span>
+      </button>
+    `;
+  }
+  render();
+
+  // ---------- 启动逻辑 ----------
+  function openWeb(url) {
+    window.open(url, '_blank', 'noopener');
+  }
+  function tryLaunch(item) {
+    const scheme = (item.scheme || '').trim();
+    const web = (item.web || '').trim();
+    if (!scheme) {
+      // 无协议，直接打开网页
+      if (web) openWeb(web);
+      else toast('该快捷方式没有可用的链接', 'error');
+      return;
+    }
+    // 有协议：尝试触发 OS 启动；监听 blur 判断是否被外部接管
+    let taken = false;
+    const onBlur = () => { taken = true; };
+    const onVis = () => { if (document.hidden) taken = true; };
+    window.addEventListener('blur', onBlur, { once: true });
+    document.addEventListener('visibilitychange', onVis, { once: true });
+
+    // 用 iframe 触发（更兼容，不会真的导航走）
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = scheme;
+    document.body.appendChild(iframe);
+    setTimeout(() => iframe.remove(), 2000);
+
+    // 兜底：也改 location（部分浏览器只会响应这个）
+    try { window.location.href = scheme; } catch (_) {}
+
+    setTimeout(() => {
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVis);
+      if (!taken && !document.hidden) {
+        showNotRunningModal(item);
+      }
+    }, 1500);
+  }
+
+  function showNotRunningModal(item) {
+    const html = `
+      <div class="modal-head">
+        <div class="modal-icon">🔗</div>
+        <h3>「${escapeHtml(item.name)}」未启动</h3>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <p class="qa-modal-desc">
+            没检测到 <b>${escapeHtml(item.name)}</b> 接管浏览器焦点。
+            可能尚未安装，或未注册 <code>${escapeHtml(item.scheme || '—')}</code> 协议。
+          </p>
+          ${item.web ? `
+          <p class="qa-modal-desc">要不要先在浏览器里打开网页版？</p>
+          ` : ''}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-soft" data-modal-close>取消</button>
+        ${item.web ? `<button class="btn btn-dark" data-modal-open-web>在浏览器中打开</button>` : ''}
+      </div>
+    `;
+    Modal.open(html);
+    const m = Modal.current;
+    if (!m) return;
+    m.querySelector('[data-modal-open-web]')?.addEventListener('click', () => {
+      Modal.close();
+      if (item.web) openWeb(item.web);
+    });
+  }
+
+  // ---------- 添加 / 删除 ----------
+  function showAddModal() {
+    const html = `
+      <div class="modal-head">
+        <div class="modal-icon">＋</div>
+        <h3>添加快捷方式</h3>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <label class="field">
+            <span class="field-label">名称</span>
+            <input type="text" id="qaAddName" maxlength="20" placeholder="如：飞书 / Notion / Jira" />
+          </label>
+          <label class="field">
+            <span class="field-label">图标（emoji，可选）</span>
+            <input type="text" id="qaAddIcon" maxlength="4" placeholder="🚀" />
+          </label>
+          <label class="field">
+            <span class="field-label">网页版链接（必填）</span>
+            <input type="url" id="qaAddWeb" placeholder="https://..." />
+          </label>
+          <label class="field">
+            <span class="field-label">本地协议（可选）</span>
+            <input type="text" id="qaAddScheme" placeholder="如 feishu:// / notion:// / 自定义scheme://" />
+            <span class="field-hint">填了之后点击会尝试唤起本地应用；未启动时会询问是否打开网页版</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-soft" data-modal-close>取消</button>
+        <button class="btn btn-dark" data-modal-save>保存</button>
+      </div>
+    `;
+    Modal.open(html);
+    const m = Modal.current;
+    if (!m) return;
+    m.querySelector('[data-modal-close]')?.addEventListener('click', () => Modal.close());
+    m.querySelector('[data-modal-save]')?.addEventListener('click', () => {
+      const name = m.querySelector('#qaAddName').value.trim();
+      const icon = m.querySelector('#qaAddIcon').value.trim() || '🔗';
+      const web  = m.querySelector('#qaAddWeb').value.trim();
+      const scheme = m.querySelector('#qaAddScheme').value.trim();
+      if (!name) { toast('请填写名称', 'error'); return; }
+      if (!web)  { toast('请填写网页版链接', 'error'); return; }
+      if (!/^https?:\/\//i.test(web)) { toast('网页链接需以 http:// 或 https:// 开头', 'error'); return; }
+      list.push({ name, icon, web, scheme });
+      saveList(list);
+      render();
+      Modal.close();
+      toast('已添加：' + name, 'success');
+    });
+    setTimeout(() => m.querySelector('#qaAddName')?.focus(), 50);
+  }
+
+  function removeAt(idx) {
+    const it = list[idx];
+    if (!it) return;
+    // 默认项钉钉/WorkBuddy 不允许删（通过 id 区分）
+    if (it.id === 'dingtalk' || it.id === 'workbuddy') {
+      toast('默认项不可删除', 'error');
+      return;
+    }
+    list.splice(idx, 1);
+    saveList(list);
+    render();
+  }
+
+  // ---------- 事件委托 ----------
+  document.addEventListener('click', (e) => {
+    const launch = e.target.closest('[data-launch]');
+    if (launch) {
+      e.preventDefault();
+      const idx = Number(launch.dataset.idx);
+      const item = list[idx];
+      if (item) tryLaunch(item);
+      return;
+    }
+    const addBtn = e.target.closest('[data-qa-add]');
+    if (addBtn) {
+      e.preventDefault();
+      showAddModal();
+      return;
+    }
+    const rm = e.target.closest('[data-qa-remove]');
+    if (rm) {
+      e.preventDefault();
+      e.stopPropagation();
+      removeAt(Number(rm.dataset.idx));
+      return;
+    }
+  });
+})();
+</script>
 {% endblock %}
