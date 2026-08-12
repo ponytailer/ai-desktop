@@ -2994,3 +2994,197 @@ body, .navbar, .skill-card, .modal, .todo-item, .todo-col, .stat-row,
   html, body, body, .navbar, .skill-card, .modal, .todo-item, .btn,
   .field input, .theme-toggle { transition: none !important; }
 }
+
+/* ============================================================
+   Home: 底部双列布局（左 待办 / 右 快捷方式）
+   ============================================================ */
+.home-bottom {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1080px) {
+  .home-bottom { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   Quick Access 侧栏
+   ============================================================ */
+.quick-access {
+  position: sticky;
+  top: 88px;
+  background: var(--surface, #FBF9F3);
+  border: 1px solid var(--line-soft, #E8DFD0);
+  border-radius: 18px;
+  padding: 18px 18px 14px;
+  box-shadow: 0 1px 0 rgba(27, 25, 22, 0.02), 0 12px 32px -18px rgba(27, 25, 22, 0.10);
+}
+.qa-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.qa-title {
+  font-family: var(--font-serif, "Fraunces", serif);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink-1, #1B1916);
+  margin: 0 0 2px;
+}
+.qa-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-4, #8A8278);
+}
+.qa-add-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--bg-soft, #F1ECDF);
+  border: 1px solid var(--line-soft, #E8DFD0);
+  color: var(--ink-2, #4A453E);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .18s ease;
+}
+.qa-add-btn:hover {
+  background: var(--accent, #E8581C);
+  border-color: var(--accent, #E8581C);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.qa-add-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; }
+
+.qa-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.qa-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px 12px;
+  background: var(--bg, #FFFFFF);
+  border: 1px solid var(--line-soft, #E8DFD0);
+  border-radius: 14px;
+  color: var(--ink-1, #1B1916);
+  cursor: pointer;
+  text-align: center;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+  font-family: inherit;
+}
+.qa-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent, #E8581C);
+  box-shadow: 0 8px 24px -12px rgba(232, 88, 28, 0.30);
+}
+.qa-card:active { transform: translateY(0); }
+.qa-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg-soft, #F1ECDF);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+}
+.qa-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2, #4A453E);
+  letter-spacing: 0.01em;
+}
+.qa-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: rgba(27, 25, 22, 0.06);
+  color: var(--ink-3, #6E665B);
+  border-radius: 6px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s ease;
+}
+.qa-remove svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; }
+.qa-card:hover .qa-remove { display: inline-flex; }
+.qa-remove:hover { background: var(--accent, #E8581C); color: #fff; }
+
+.qa-add {
+  border-style: dashed;
+  background: transparent;
+  color: var(--ink-3, #6E665B);
+}
+.qa-add:hover {
+  background: var(--bg-soft, #F1ECDF);
+  color: var(--accent, #E8581C);
+  border-color: var(--accent, #E8581C);
+}
+.qa-icon-add {
+  background: transparent;
+  color: inherit;
+  font-size: 22px;
+  font-weight: 300;
+}
+
+.qa-tip {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--ink-5, #A89F92);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* 添加/未启动 弹窗内的描述样式 */
+.qa-modal-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2, #4A453E);
+  margin: 0 0 10px;
+}
+.qa-modal-desc:last-child { margin-bottom: 0; }
+.qa-modal-desc code {
+  font-family: "JetBrains Mono", "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  padding: 2px 6px;
+  background: var(--bg-soft, #F1ECDF);
+  border-radius: 4px;
+  color: var(--accent, #E8581C);
+}
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--ink-4, #8A8278);
+  line-height: 1.5;
+}
+
+/* 暗色主题适配 */
+[data-theme="dark"] .quick-access {
+  background: var(--surface, #1F1B17);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.30), 0 12px 32px -18px rgba(0, 0, 0, 0.50);
+}
+[data-theme="dark"] .qa-title { color: var(--ink-1, #F4F0E7); }
+[data-theme="dark"] .qa-add-btn { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.08); color: var(--ink-3, #B8B0A4); }
+[data-theme="dark"] .qa-card { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .qa-icon { background: rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] .qa-add { background: transparent; }
+[data-theme="dark"] .qa-modal-desc code { background: rgba(255, 255, 255, 0.08); }
+
