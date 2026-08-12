@@ -18,7 +18,7 @@ from .deps import (
     SESSION_COOKIE_NAME,
     verify_session_token,
 )
-from .routers import admin, aigw, auth, feedback, keys, pages, reviews, submissions
+from .routers import admin, aigw, auth, feedback, keys, pages, reviews, submissions, todos
 
 APP_ROOT = Path(__file__).resolve().parent
 
@@ -67,6 +67,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(feedback.router)
     app.include_router(aigw.router)
+    app.include_router(todos.router)
 
     @app.on_event("startup")
     def _on_start() -> None:  # noqa: D401

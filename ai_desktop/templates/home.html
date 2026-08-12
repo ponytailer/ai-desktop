@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}我的工作看板 · AIDesktop{% endblock %}
+
+{% block content %}
+<div class="page page-home">
+
+  <!-- Hero：渐变背景 + 进度环 -->
+  <section class="todo-hero">
+    <div class="todo-hero-glow"></div>
+    <div class="todo-hero-main">
+      <div class="todo-hero-eyebrow">🗓️ 工作看板</div>
+      <h1 class="todo-hero-title">今天，专注做完这些事</h1>
+      <p class="todo-hero-sub">
+        一件一件来，划掉的感觉会上瘾。
+        <span class="todo-hero-date" id="todayDate"></span>
+      </p>
+    </div>
+    <div class="todo-hero-ring">
+      <svg viewBox="0 0 64 64" class="ring-svg" aria-hidden="true">
+        <circle class="ring-track" cx="32" cy="32" r="26"></circle>
+        <circle class="ring-value" cx="32" cy="32" r="26" id="ringValue"></circle>
+      </svg>
+      <div class="ring-text">
+        <b id="ringPercent">0%</b>
+        <span id="ringRatio">0 / 0</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 输入区 -->
+  <form class="todo-composer" id="todoAddForm">
+    <span class="todo-composer-plus" aria-hidden="true">＋</span>
+    <input class="todo-composer-input" id="todoAddInput" name="title" type="text" maxlength="100"
+           placeholder="想做什么？写下来，回车即可添加…" autocomplete="off">
+    <button class="todo-composer-btn" type="submit">添加</button>
+  </form>
+
+  <!-- 看板：双列 -->
+  <div class="todo-board">
+    <section class="todo-col">
+      <header class="todo-col-head">
+        <span class="todo-col-title">
+          <span class="dot dot-pending"></span>进行中
+        </span>
+        <span class="todo-col-count" id="pendingCount">{{ todo_counts.pending }}</span>
+      </header>
+      <ul class="todo-list" id="pendingList">
+        {% for t in todos if not t.done %}
+        <li class="todo-item" data-id="{{ t.id }}"
+            data-created="{{ t.created_at.isoformat() }}"
+            data-due="{{ t.due_at.isoformat() if t.due_at else '' }}">
+          <button class="todo-check" data-toggle title="标记完成" aria-label="标记完成">
+            <svg viewBox="0 0 20 20"><path d="M5 10.5l3.2 3.2L15 7.2" /></svg>
+          </button>
+          <div class="todo-body">
+            <span class="todo-title">{{ t.title }}</span>
+            <span class="todo-meta"></span>
+          </div>
+          <div class="todo-acts">
+            <button class="todo-act todo-edit" data-edit title="编辑" aria-label="编辑">
+              <svg viewBox="0 0 20 20"><path d="M4.5 13.5l.7-2.2L11 5.5l2 2-5.8 5.8-2.2.7zM14 4l2 2" /></svg>
+            </button>
+            <button class="todo-act todo-del" data-delete title="删除" aria-label="删除">
+              <svg viewBox="0 0 20 20"><path d="M6 6l8 8M14 6l-8 8" /></svg>
+            </button>
+          </div>
+        </li>
+        {% endfor %}
+        <li class="todo-empty" id="pendingEmpty" {% if todo_counts.pending > 0 %}hidden{% endif %}>
+          <span class="todo-empty-emoji">📝</span>
+          <span class="todo-empty-text">还没有进行中的待办<br>在上面写一条，开始今天的工作</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="todo-col">
+      <header class="todo-col-head">
+        <span class="todo-col-title">
+          <span class="dot dot-done"></span>已完成
+        </span>
+        <span class="todo-col-count" id="doneCount">{{ todo_counts.done }}</span>
+      </header>
+      <ul class="todo-list" id="doneList">
+        {% for t in todos if t.done %}
+        <li class="todo-item is-done" data-id="{{ t.id }}"
+            data-created="{{ t.created_at.isoformat() }}"
+            data-completed="{{ t.completed_at.isoformat() if t.completed_at else '' }}"
+            data-due="{{ t.due_at.isoformat() if t.due_at else '' }}"
+            data-done="1">
+          <button class="todo-check" data-toggle title="标记未完成" aria-label="标记未完成">
+            <svg viewBox="0 0 20 20"><path d="M5 10.5l3.2 3.2L15 7.2" /></svg>
+          </button>
+          <div class="todo-body">
+            <span class="todo-title">{{ t.title }}</span>
+            <span class="todo-meta"></span>
+          </div>
+          <div class="todo-acts">
+            <button class="todo-act todo-edit" data-edit title="编辑" aria-label="编辑">
+              <svg viewBox="0 0 20 20"><path d="M4.5 13.5l.7-2.2L11 5.5l2 2-5.8 5.8-2.2.7zM14 4l2 2" /></svg>
+            </button>
+            <button class="todo-act todo-del" data-delete title="删除" aria-label="删除">
+              <svg viewBox="0 0 20 20"><path d="M6 6l8 8M14 6l-8 8" /></svg>
+            </button>
+          </div>
+        </li>
+        {% endfor %}
+        <li class="todo-empty" id="doneEmpty" {% if todo_counts.done > 0 %}hidden{% endif %}>
+          <span class="todo-empty-emoji">🎯</span>
+          <span class="todo-empty-text">完成的事会出现在这里<br>动手划掉第一个吧</span>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/todo-board.js"></script>
+{% endblock %}

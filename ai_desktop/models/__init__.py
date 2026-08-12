@@ -32,6 +32,7 @@ from .constants import (
 from .employee import Employee
 from .feedback import Feedback
 from .skill import Skill, SkillVersion
+from .todo_item import TodoItem
 
 __all__ = [
     "SCOPE_PUBLIC",
@@ -52,4 +53,5 @@ __all__ = [
     "ApiKey",
     "Employee",
     "Feedback",
+    "TodoItem",
 ]

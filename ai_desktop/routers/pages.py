@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -19,6 +20,7 @@ from ..models import (
     Category,
     Skill,
     SkillVersion,
+    TodoItem,
 )
 
 router = APIRouter()
@@ -40,9 +42,33 @@ def _common_ctx(db: Session, request: Request) -> dict:
 
 
 @router.get("/", response_class=HTMLResponse)
-def index_redirect():
-    """默认主页为发现页（/discover）。"""
-    return RedirectResponse(url="/discover", status_code=302)
+def index(request: Request, db: Session = Depends(get_db)):
+    """首页：个人工作看板（Todo 待办）。"""
+    ctx = _common_ctx(db, request)
+    user: CurrentUser = request.state.current_user
+    items = (
+        db.query(TodoItem)
+        .filter(TodoItem.user_id == user.id)
+        .order_by(
+            TodoItem.done.asc(),
+            func.coalesce(TodoItem.completed_at, TodoItem.created_at).desc(),
+        )
+        .all()
+    )
+    return templates.TemplateResponse(
+        request,
+        "home.html",
+        {
+            **ctx,
+            "page": "home",
+            "todos": items,
+            "todo_counts": {
+                "total": len(items),
+                "done": sum(1 for i in items if i.done),
+                "pending": sum(1 for i in items if not i.done),
+            },
+        },
+    )
 
 
 @router.get("/discover", response_class=HTMLResponse)

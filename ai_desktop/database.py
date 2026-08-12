@@ -70,3 +70,9 @@ def _migrate_columns() -> None:
                 if col not in existing:
                     conn.execute(text(f"ALTER TABLE api_keys ADD COLUMN {col} {ddl}"))
 
+        # todo_items: due_at（预期完成时间）
+        if "todo_items" in inspector.get_table_names():
+            existing = {c["name"] for c in inspector.get_columns("todo_items")}
+            if "due_at" not in existing:
+                conn.execute(text("ALTER TABLE todo_items ADD COLUMN due_at DATETIME"))
+

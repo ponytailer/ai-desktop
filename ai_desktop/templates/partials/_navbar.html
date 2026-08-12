@@ -6,8 +6,11 @@
     AIDesktop
   </a>
   <nav class="nav-tabs">
+    <a href="/" class="{% if page == 'home' %}active{% endif %}">
+      <span>🏠</span> 首页
+    </a>
     <a href="/discover" class="{% if page == 'discover' %}active{% endif %}">
-      <span>🧭</span> 首页
+      <span>🧭</span> 发现
     </a>
     <a href="/my-uploads" class="{% if page == 'my_uploads' %}active{% endif %}">
       <span>🗂</span> 我的上传
@@ -31,9 +34,9 @@
       <button class="user-chip user-chip-trigger" type="button">
         <span class="avatar">{{ user.avatar_label if user else '?' }}</span>
         <div class="meta">
-          <span class="top">{{ user.id if user else '' }}</span>
+          <span class="top">{{ user.name if user else '' }}</span>
           <span class="bot">
-            {{ user.name if user else '' }}
+<!--            {{ user.id if user else '' }}-->
             {% if user and user.highest_role_label %}
             <span class="role-tag">{{ user.highest_role_label }}</span>
             {% endif %}

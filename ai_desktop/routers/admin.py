@@ -214,8 +214,10 @@ def employee_detail(emp_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/api/employees/{emp_id}/roles")
-def update_roles(emp_id: str, body: RoleUpdate, request: Request,
-    db: Session = Depends(get_db)):
+def update_roles(
+    emp_id: str, body: RoleUpdate, request: Request,
+    db: Session = Depends(get_db)
+):
     user: CurrentUser = request.state.current_user
     if not user.has_role(ROLE_SUPER_ADMIN):
         raise HTTPException(403, "无权限修改角色")
@@ -233,8 +235,10 @@ def update_roles(emp_id: str, body: RoleUpdate, request: Request,
 
 
 @router.post("/api/employees")
-def create_employee(body: EmployeeCreate, request: Request,
-    db: Session = Depends(get_db)):
+def create_employee(
+    body: EmployeeCreate, request: Request,
+    db: Session = Depends(get_db)
+):
     user: CurrentUser = request.state.current_user
     if not user.has_role(ROLE_SUPER_ADMIN):
         raise HTTPException(403, "无权限创建用户")

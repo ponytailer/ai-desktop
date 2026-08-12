@@ -72,7 +72,7 @@ class CurrentUser:
 
 CURRENT_USER = CurrentUser(
     id="48890023",
-    name="管理员",
+    name="Pony",
     avatar_label="48",
     roles=(ROLE_SUPER_ADMIN,),
 )
