@@ -4,51 +4,265 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>登录 · SkillHub</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --paper:#F4F0E7;
+      --paper-2:#EFEAE0;
+      --card:#FBF9F3;
+      --ink:#1B1916;
+      --ink-2:#423E38;
+      --ink-3:#6E685F;
+      --line:#D9D2C4;
+      --line-2:#C7BEAC;
+      --accent:#E8581C;
+      --accent-press:#CC4711;
+      --accent-soft:#FBE6D8;
+      --radius:18px;
+      --radius-sm:11px;
+      --shadow:0 1px 2px rgba(27,25,22,.04), 0 18px 40px -28px rgba(27,25,22,.35);
+      --ease:cubic-bezier(.22,1,.36,1);
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;height:100%;}
+    body{
+      font-family:"Space Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+      color:var(--ink);
+      background:var(--paper);
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
+      display:flex;
+      min-height:100vh;
+      position:relative;
+      overflow-x:hidden;
+    }
+    /* 纸感纹理：极淡的斜向网点 + 角落暖光 */
+    body::before{
+      content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+      background-image:radial-gradient(rgba(27,25,22,.045) 1px, transparent 1.4px);
+      background-size:22px 22px;
+      -webkit-mask-image:radial-gradient(120% 120% at 18% 12%, #000 0%, transparent 72%);
+              mask-image:radial-gradient(120% 120% at 18% 12%, #000 0%, transparent 72%);
+      opacity:.7;
+    }
+    body::after{
+      content:"";position:fixed;z-index:0;pointer-events:none;
+      width:60vw;height:60vw;right:-18vw;top:-22vw;border-radius:50%;
+      background:radial-gradient(circle, rgba(232,88,28,.10), transparent 62%);
+    }
+
+    .lp-shell{
+      position:relative;z-index:1;
+      width:100%;max-width:1160px;margin:auto;
+      padding:clamp(28px,5vw,64px);
+      display:grid;grid-template-columns:1.08fr .82fr;
+      gap:clamp(40px,6vw,88px);
+      align-items:center;
+    }
+
+    /* ---------- 左：编辑式品牌区 ---------- */
+    .lp-aside{display:flex;flex-direction:column;gap:26px;max-width:520px;}
+    .lp-eyebrow{
+      display:inline-flex;align-items:center;gap:9px;align-self:flex-start;
+      font-size:12.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+      color:var(--ink-2);
+      padding:7px 14px;border:1px solid var(--line);border-radius:999px;
+      background:rgba(251,249,243,.5);
+    }
+    .lp-eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+      box-shadow:0 0 0 4px var(--accent-soft);}
+    .lp-title{
+      font-family:"Fraunces",Georgia,serif;
+      font-weight:600;
+      font-size:clamp(38px,5.4vw,62px);
+      line-height:1.02;
+      letter-spacing:-.02em;
+      margin:0;color:var(--ink);
+    }
+    .lp-title em{font-style:italic;color:var(--accent);font-weight:500;}
+    .lp-lead{
+      font-size:clamp(15px,1.4vw,17px);line-height:1.6;color:var(--ink-3);
+      margin:0;max-width:42ch;
+    }
+
+    /* 扁平「技能库」预览卡 —— 不用 3D 玻璃 */
+    .lp-preview{
+      margin-top:6px;
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:20px;
+      position:relative;
+    }
+    .lp-preview::before{
+      content:"";position:absolute;left:0;top:18px;bottom:18px;width:3px;border-radius:3px;
+      background:linear-gradient(var(--accent),#E8A01C);
+    }
+    .lp-prev-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-left:10px;}
+    .lp-prev-head .name{font-weight:600;font-size:14px;color:var(--ink);}
+    .lp-pill{
+      font-size:10.5px;font-weight:600;letter-spacing:.08em;
+      color:var(--accent-press);background:var(--accent-soft);
+      padding:3px 9px;border-radius:999px;
+    }
+    .lp-skills{list-style:none;margin:0;padding:0 0 0 10px;display:flex;flex-direction:column;gap:9px;}
+    .lp-skills li{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--ink-2);}
+    .lp-skills .idx{font-family:"Fraunces",serif;font-size:12px;font-weight:600;color:var(--accent);width:18px;flex:none;}
+    .lp-skills .cat{margin-left:auto;font-size:11px;color:var(--ink-3);
+      border:1px solid var(--line);border-radius:999px;padding:2px 9px;}
+    .lp-trend{margin:16px 0 2px;padding-left:10px;display:flex;align-items:baseline;justify-content:space-between;}
+    .lp-trend .t{font-size:12px;color:var(--ink-3);}
+    .lp-trend .v{font-family:"Fraunces",serif;font-weight:600;font-size:15px;color:var(--ink);}
+    .lp-bars{display:flex;align-items:flex-end;gap:7px;height:46px;margin-top:8px;padding-left:10px;}
+    .lp-bars i{flex:1;border-radius:4px 4px 2px 2px;background:var(--ink);opacity:.82;}
+    .lp-bars i.hot{background:var(--accent);opacity:1;}
+
+    .lp-foot{font-size:12px;color:var(--ink-3);padding-left:2px;}
+    .lp-foot b{color:var(--ink-2);font-weight:600;}
+
+    /* ---------- 右：登录卡 ---------- */
+    .lp-panel{display:flex;flex-direction:column;gap:14px;justify-self:end;width:100%;max-width:400px;}
+    .lp-card{
+      background:var(--card);
+      border:1.5px solid var(--ink);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:clamp(26px,3vw,34px);
+    }
+    .lp-brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+    .lp-brand .mark{
+      width:34px;height:34px;border-radius:9px;background:var(--ink);color:var(--paper);
+      display:grid;place-items:center;font-family:"Fraunces",serif;font-weight:700;font-size:15px;
+    }
+    .lp-brand .nm{font-weight:600;font-size:15px;letter-spacing:-.01em;}
+    .lp-h{font-family:"Fraunces",serif;font-weight:600;font-size:25px;line-height:1.1;margin:0 0 4px;letter-spacing:-.01em;}
+    .lp-sub{font-size:13px;color:var(--ink-3);margin:0 0 24px;}
+
+    .lp-field{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;}
+    .lp-field label{font-size:12px;font-weight:500;color:var(--ink-2);letter-spacing:.01em;}
+    .lp-input{
+      height:46px;padding:0 14px;font-size:14px;font-family:inherit;color:var(--ink);
+      background:var(--paper);border:1.5px solid var(--line-2);border-radius:var(--radius-sm);
+      transition:border-color .2s var(--ease),box-shadow .2s var(--ease),background .2s var(--ease);
+    }
+    .lp-input::placeholder{color:#A79E8E;}
+    .lp-input:focus{
+      outline:none;border-color:var(--accent);background:var(--card);
+      box-shadow:0 0 0 4px var(--accent-soft);
+    }
+    .lp-row{display:flex;align-items:center;justify-content:flex-end;margin-bottom:20px;}
+    .lp-remember{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);cursor:pointer;user-select:none;}
+    .lp-remember input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+    .lp-submit{
+      width:100%;height:48px;border:none;border-radius:var(--radius-sm);cursor:pointer;
+      background:var(--accent);color:#fff;font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.04em;
+      transition:background .2s var(--ease),transform .15s var(--ease),box-shadow .2s var(--ease);
+      box-shadow:0 12px 26px -14px rgba(232,88,28,.85);
+    }
+    .lp-submit:hover{background:var(--accent-press);transform:translateY(-1px);
+      box-shadow:0 16px 30px -14px rgba(232,88,28,.9);}
+    .lp-submit:active{transform:translateY(0);}
+    .lp-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+    .lp-card-foot{text-align:center;font-size:12px;color:var(--ink-3);margin-top:16px;}
+
+    /* 入场动效 */
+    .lp-aside,.lp-panel{opacity:0;transform:translateY(14px);animation:lp-in .7s var(--ease) forwards;}
+    .lp-panel{animation-delay:.12s;}
+    @keyframes lp-in{to{opacity:1;transform:none;}}
+
+    /* ---------- 响应式 ---------- */
+    @media (max-width:900px){
+      .lp-shell{grid-template-columns:1fr;gap:36px;padding:32px 22px;align-items:start;}
+      .lp-panel{justify-self:stretch;max-width:440px;margin:0 auto;width:100%;order:-1;}
+      .lp-aside{max-width:none;}
+      .lp-preview{display:none;}
+      body::after{display:none;}
+    }
+    @media (max-width:420px){
+      .lp-card{padding:24px 20px;}
+    }
+    @media (prefers-reduced-motion:reduce){
+      .lp-aside,.lp-panel{animation:none;opacity:1;transform:none;}
+      .lp-submit:hover{transform:none;}
+    }
+  </style>
 </head>
-<body class="login-body">
-  <div class="login-wrapper">
-    <div class="login-card">
-      <div class="login-brand">
-        <span class="logo-mark">AI</span>
-        <span class="login-brand-name">AIDesktop</span>
+<body class="lp">
+  <main class="lp-shell">
+    <!-- 左：品牌叙事 -->
+    <aside class="lp-aside">
+      <span class="lp-eyebrow"><span class="dot"></span> AIDesktop · 企业 AI 工作台</span>
+      <h1 class="lp-title">团队的人工智能，<br><em>井然有序</em>。</h1>
+<!--      <p class="lp-lead">把分散的 Skill 收敛到一个安全的工作台</p>-->
+<!--      <p class="lp-lead">多模型统一路由、确保内容合规</p>-->
+
+      <div class="lp-preview" aria-hidden="true">
+        <div class="lp-prev-head">
+          <span class="name">技能库</span>
+          <span class="lp-pill">本周活跃</span>
+        </div>
+        <ul class="lp-skills">
+          <li><span class="idx">01</span> 文档摘要 <span class="cat">效率</span></li>
+          <li><span class="idx">02</span> 代码审查 <span class="cat">研发</span></li>
+          <li><span class="idx">03</span> 数据透视 <span class="cat">分析</span></li>
+          <li><span class="idx">04</span> 邮件起草 <span class="cat">办公</span></li>
+        </ul>
+        <div class="lp-trend">
+          <span class="t">调用趋势</span>
+          <span class="v">+38%</span>
+        </div>
+        <div class="lp-bars">
+          <i style="height:42%"></i><i style="height:60%"></i><i style="height:48%"></i>
+          <i class="hot" style="height:82%"></i><i style="height:66%"></i><i style="height:74%"></i><i style="height:70%"></i>
+        </div>
       </div>
-      <h1 class="login-title">登录到 SkillHub</h1>
-      <p class="login-subtitle">企业 Skills 分享平台</p>
 
-      <form id="loginForm" class="login-form" method="post" action="/api/auth/login">
-        <div class="login-field">
-          <label for="username">用户名</label>
-          <input type="text" id="username" name="username" placeholder="请输入用户名" autocomplete="username" required autofocus>
-        </div>
-        <div class="login-field">
-          <label for="password">密码</label>
-          <input type="password" id="password" name="password" placeholder="请输入密码" autocomplete="current-password" required>
-        </div>
-        <div class="login-options">
-          <label class="login-remember">
-            <input type="checkbox" name="remember" value="on">
-            <span>30 天免登录</span>
-          </label>
-        </div>
-        <button type="submit" class="btn btn-dark login-submit">
-          登 录
-        </button>
-      </form>
+      <p class="lp-foot">已服务 <b>12</b> 个业务团队 · <b>240+</b> 技能在线运行</p>
+    </aside>
 
-    </div>
-  </div>
+    <!-- 右：登录 -->
+    <section class="lp-panel">
+      <div class="lp-card">
+        <div class="lp-brand">
+          <span class="mark">A</span>
+          <span class="nm">AIDesktop</span>
+        </div>
+        <h2 class="lp-h">登录</h2>
+        <p class="lp-sub">使用企业账号继续</p>
+
+        <form id="loginForm" method="post" action="/api/auth/login">
+          <div class="lp-field">
+            <label for="username">用户名</label>
+            <input class="lp-input" type="text" id="username" name="username" placeholder="请输入用户名" autocomplete="username" required autofocus>
+          </div>
+          <div class="lp-field">
+            <label for="password">密码</label>
+            <input class="lp-input" type="password" id="password" name="password" placeholder="请输入密码" autocomplete="current-password" required>
+          </div>
+          <div class="lp-row">
+            <label class="lp-remember">
+              <input type="checkbox" name="remember" value="on">
+              <span>30 天免登录</span>
+            </label>
+          </div>
+          <button type="submit" class="lp-submit">登 录</button>
+        </form>
+        <p class="lp-card-foot">© 2026 AIDesktop · 为团队打造的 AI 桌面</p>
+      </div>
+    </section>
+  </main>
 
   <div id="toast-root"></div>
   <script src="/static/js/app.js"></script>
   <script>
-    // 登录表单：AJAX 提交，显示错误提示
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.currentTarget;
-      const btn = form.querySelector('.login-submit');
-      btn.disabled = true;
-      btn.textContent = '登录中…';
+      const btn = form.querySelector('.lp-submit');
+      btn.disabled = true; btn.textContent = '登录中…';
       try {
         const fd = new FormData(form);
         const res = await fetch('/api/auth/login', { method: 'POST', body: fd, redirect: 'manual' });
@@ -57,14 +271,11 @@
         } else if (res.status === 401) {
           const j = await res.json();
           toast(j.detail || '用户名或密码错误', 'error');
-          btn.disabled = false;
-          btn.textContent = '登 录';
+          btn.disabled = false; btn.textContent = '登 录';
         } else {
-          // 可能是重定向
           window.location.href = '/';
         }
       } catch (err) {
-        // fetch 遇到 302 会报错，直接跳转
         window.location.href = '/';
       }
     });

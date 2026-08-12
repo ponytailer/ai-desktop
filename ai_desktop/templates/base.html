@@ -3,8 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}SkillHub · 企业 Skills 分享平台{% endblock %}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <title>{% block title %}AIDesktop· 企业 Skills 分享平台{% endblock %}</title>
+
+  <!-- 主题预渲染：在首屏绘制前确定 data-theme，避免明暗闪烁（FOUC） -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Editorial Warm 字体：Fraunces 衬线标题 + Space Grotesk 正文 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/app.css?v=20260811">
 </head>
 <body>
   {% include 'partials/_navbar.html' %}
@@ -16,5 +34,23 @@
   <div id="toast-root"></div>
   <script src="/static/js/app.js"></script>
   {% block extra_scripts %}{% endblock %}
+
+  <!-- 浅/暗主题切换 -->
+  <script>
+    (function () {
+      var root = document.documentElement;
+      function apply(next) {
+        if (next === 'dark') root.setAttribute('data-theme', 'dark');
+        else root.removeAttribute('data-theme');
+        try { localStorage.setItem('theme', next); } catch (e) {}
+      }
+      var btn = document.querySelector('.theme-toggle');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        var isDark = root.getAttribute('data-theme') === 'dark';
+        apply(isDark ? 'light' : 'dark');
+      });
+    })();
+  </script>
 </body>
 </html>
