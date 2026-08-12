@@ -107,6 +107,5 @@ def admin_feedback(request: Request, db: Session = Depends(get_db)):
             "feedbacks": feedbacks,
             "total": len(feedbacks),
             "unread_count": unread,
-            "total_feedback": unread,  # 子导航 badge 显示未读数
         },
     )

@@ -21,6 +21,7 @@ from ..models import (
     STATUS_PUBLISHED,
     ApiKey,
     Employee,
+    Feedback,
     Skill,
     SkillVersion,
 )
@@ -42,10 +43,12 @@ def _common_ctx(db: Session, request: Request) -> dict:
     pending_skills = db.query(SkillVersion).filter(
         SkillVersion.status == STATUS_PENDING).count()
     pending_keys = db.query(ApiKey).filter(ApiKey.status == KEY_PENDING).count()
+    unread_feedback = db.query(Feedback).filter(Feedback.is_read.is_(False)).count()
     return {
         "current_user": request.state.current_user,
         "pending_reviews_count": pending_skills,
         "pending_key_count": pending_keys,
+        "total_feedback": unread_feedback,  # 子导航「用户反馈」未读角标，全后台页常驻
     }
 
 

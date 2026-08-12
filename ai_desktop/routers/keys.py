@@ -20,6 +20,7 @@ from ..models import (
     KEY_REVOKED,
     STATUS_PENDING,
     ApiKey,
+    Feedback,
     SkillVersion,
 )
 
@@ -85,6 +86,7 @@ def keys_page(request: Request, db: Session = Depends(get_db)):
             "user_has_admin_role": user_has_admin_role,
             "pending_reviews_count": pending_skills,
             "pending_key_count": pending_keys,
+            "total_feedback": db.query(Feedback).filter(Feedback.is_read.is_(False)).count(),
         },
     )
 

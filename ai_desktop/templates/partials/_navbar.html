@@ -13,7 +13,7 @@
       <span>🧭</span> 发现
     </a>
     <a href="/my-uploads" class="{% if page == 'my_uploads' %}active{% endif %}">
-      <span>🗂</span> 我的上传
+      <span>🗂</span> 我的技能
     </a>
     {# 密钥管理：所有人可见（个人密钥申请） #}
     <a href="/keys" class="{% if page == 'keys' %}active{% endif %}">
@@ -21,10 +21,14 @@
     </a>
     {# 管理后台：super_admin / skills_admin / key_admin 可见 #}
     {% if user and (user.has_role('super_admin') or user.has_role('skills_admin') or user.has_role('key_admin')) %}
+    {% set admin_fb = (total_feedback | default(0)) if user.has_role('super_admin') else 0 %}
+    {% set admin_skill = pending if user.has_role('skills_admin') else 0 %}
+    {% set admin_key = (pending_key_count if pending_key_count is defined else 0) if user.has_role('key_admin') else 0 %}
+    {% set admin_total = admin_fb + admin_skill + admin_key %}
     <a href="/admin" class="{% if page == 'admin' %}active{% endif %}">
       <span>⚙</span> 管理后台
-      {% if (pending > 0 and user.has_role('skills_admin')) or (pending_key_count is defined and pending_key_count > 0 and user.has_role('key_admin')) %}
-      <span class="nav-badge">{{ (pending if user.has_role('skills_admin') and pending > 0 else 0) + (pending_key_count if user.has_role('key_admin') and pending_key_count is defined and pending_key_count > 0 else 0) }}</span>
+      {% if admin_total > 0 %}
+      <span class="nav-badge">{{ admin_total }}</span>
       {% endif %}
     </a>
     {% endif %}
