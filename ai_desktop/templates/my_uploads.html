@@ -5,8 +5,8 @@
   <div class="hero-row">
     <div class="hero-intro">
       <div class="eyebrow">📁 贡献记录</div>
-      <h1 class="page-title">Skills</h1>
-      <p class="page-subtitle">管理草稿、审核进度和已发布版本。</p>
+      <h1 class="page-title">我的 Skills</h1>
+      <p class="page-subtitle">以技能为单位管理你的草稿、审核进度与已发布版本，点击卡片查看版本历史与迭代。</p>
     </div>
     <div class="hero-actions">
       <button class="btn btn-dark" data-upload-skill>
@@ -18,7 +18,7 @@
   <section class="counters" data-filter-bar>
     <div class="counter all is-active" data-filter="all">
       <div class="v">{{ counts.all }}</div>
-      <div class="l">全部提交</div>
+      <div class="l">全部</div>
     </div>
     <div class="counter is-pending" data-filter="pending">
       <div class="v" style="color: var(--accent-orange);">{{ counts.pending }}</div>
@@ -30,76 +30,119 @@
     </div>
     <div class="counter is-approved" data-filter="published">
       <div class="v" style="color: var(--accent-green);">{{ counts.approved }}</div>
-      <div class="l">审核通过</div>
+      <div class="l">已发布</div>
     </div>
   </section>
 
-  <h2 style="font-size:16px; margin: 24px 0 12px;">提交记录</h2>
+  <div class="section-head">
+    <h2>技能卡片</h2>
+    <span class="meta" id="resultMeta">{{ groups | length }} 个技能</span>
+  </div>
 
-  {% for v in versions %}
-    <div class="record" data-status="{{ v.status }}">
-      <div class="icon-tile" style="background:{{ v.skill.accent_color }}">{{ v.skill.icon }}</div>
-      <div class="record-main">
-        <div class="record-head">
-          <span class="name">{{ v.skill.name }}</span>
-          <span class="tag-version">{{ v.version }}</span>
-          <span class="status-badge {{ v.status }}">{{ v.status_label }}</span>
-          <span class="scope-chip scope-{{ v.scope }}">
-            {% if v.scope == 'public' %}🌍公开{% else %}🏢部门内可见{% endif %}
-          </span>
-          {% if v.featured_badge %}<span class="tag-featured">精选</span>{% endif %}
+  <section class="my-skills-grid" id="mySkillsGrid">
+    {% for g in groups %}
+      <article class="my-skill-card" data-status="{{ g.statuses | join(' ') }}" data-skill-id="{{ g.skill.id }}" data-open-skill="{{ g.skill.id }}">
+        <div class="my-skill-card-top">
+          <div class="icon-tile" style="background:{{ g.skill.accent_color }}">{{ g.skill.icon }}</div>
+          <div class="badges">
+            {% if g.primary.featured_badge %}<span class="tag-featured">精选</span>{% endif %}
+            <span class="tag-version">{{ g.primary.version }}</span>
+          </div>
         </div>
-        <p>{{ v.summary }}</p>
-        {% if v.decision_note %}
-          <div class="note-quote">审核意见：{{ v.decision_note }}</div>
-        {% endif %}
+        <h3 style="color: {{ g.skill.accent_color }};">{{ g.skill.name }}</h3>
+        <p class="my-skill-desc">{{ g.primary.summary }}</p>
+        <div class="chips">
+          {% for t in g.primary.tags_list %}<span class="chip">{{ t }}</span>{% endfor %}
+        </div>
+        <div class="my-skill-meta">
+          <span class="status-badge {{ g.primary.status }}">{{ g.primary.status_label }}</span>
+          <span class="my-skill-versions">📑 {{ g.version_count }} 个版本</span>
+        </div>
+        <div class="my-skill-footer">
+          <div class="metrics">
+            <span class="metric"><span class="download">⤓</span> {{ "{:,}".format(g.skill.downloads) }}</span>
+            <span class="metric"><span class="heart">♥</span> {{ g.skill.likes }}</span>
+          </div>
+          <button type="button" class="btn btn-ghost" data-open-skill="{{ g.skill.id }}">查看 ›</button>
+        </div>
+      </article>
+    {% else %}
+      <div class="muted empty-state" style="grid-column: 1 / -1;">
+        <div class="empty-icon">📦</div>
+        <div class="empty-title">还没有任何提交记录</div>
+        <div class="empty-sub">点击右上角「新建 Skill」开始贡献你的第一个技能。</div>
       </div>
-      <div class="record-meta">
-        <div>{{ v.submitted_at.strftime('%Y-%m-%d') }}</div>
-        <div>{{ v.size_human }}</div>
-      </div>
-      <div class="record-actions">
-        {% if v.status == 'pending' %}
-          <button class="btn-withdraw" data-withdraw="{{ v.id }}">
-            ↩ 撤回
-          </button>
-        {% elif v.status == 'draft' %}
-          <button class="btn-edit-submit" data-edit-submission="{{ v.id }}">
-            ✎ 编辑并提交
-          </button>
-          <button class="btn-discard" data-discard="{{ v.id }}">
-            🗑 废弃
-          </button>
-        {% elif v.status == 'rejected' %}
-          <button class="btn-edit-submit" data-edit-submission="{{ v.id }}">
-            ✎ 编辑并提交
-          </button>
-          <button class="btn-discard" data-discard="{{ v.id }}">
-            🗑 废弃
-          </button>
-        {% elif v.status == 'published' %}
-          {% if v.id in latest_ids %}
-            <button class="btn-iterate" data-iterate="{{ v.id }}">
-              ↻ 更新迭代
-            </button>
-          {% else %}
-            <span class="record-action-static" title="历史版本仅可查看，最新版本才能进行更新迭代">历史版本 · 仅查看</span>
-          {% endif %}
-        {% elif v.status == 'superseded' %}
-          <span class="record-action-static">已替代</span>
-        {% endif %}
-      </div>
-    </div>
-  {% else %}
-    <div class="muted" style="padding: 60px; text-align:center;">还没有任何提交记录。</div>
-  {% endfor %}
+    {% endfor %}
+  </section>
 
   <div class="pagination" id="pagination"></div>
+
+  {# 每个技能的详情（版本历史 + 操作）作为隐藏源，点击卡片时注入 Modal #}
+  {% for g in groups %}
+    <div class="skill-detail-source" data-skill-id="{{ g.skill.id }}" style="display:none">
+      <div class="modal-head">
+        <h3>
+          <span class="modal-icon" style="background:{{ g.skill.accent_color }}">{{ g.skill.icon }}</span>
+          {{ g.skill.name }}
+          <span class="modal-meta">
+            <span class="version-tag">{{ g.primary.version }}</span>
+            <span class="status-badge {{ g.primary.status }}">{{ g.primary.status_label }}</span>
+          </span>
+        </h3>
+        <button class="modal-close" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="skill-detail-sub" style="padding: 0 0 6px;">
+          <span class="scope-chip scope-{{ g.primary.scope }}">{% if g.primary.scope == 'public' %}🌍公开{% else %}🏢部门内可见{% endif %}</span>
+          <span>📑 {{ g.version_count }} 个版本</span>
+          <span>⤓ {{ "{:,}".format(g.skill.downloads) }} 次安装</span>
+          <span>♥ {{ g.skill.likes }} 点赞</span>
+        </div>
+
+        <h4 class="md-title" style="margin: 10px 0 6px;">版本历史</h4>
+        <div class="skill-versions">
+          {% for v in g.versions %}
+            <div class="version-row">
+              <div class="version-dot version-dot-{{ v.status }}"></div>
+              <div class="version-main">
+                <div class="version-row-head">
+                  <span class="tag-version">{{ v.version }}</span>
+                  <span class="status-badge {{ v.status }}">{{ v.status_label }}</span>
+                  <span class="version-date">{{ v.submitted_at.strftime('%Y-%m-%d') if v.submitted_at else '' }}</span>
+                </div>
+                {% if v.changelog %}<p class="version-changelog">{{ v.changelog }}</p>{% endif %}
+                {% if v.decision_note %}<div class="note-quote">审核意见：{{ v.decision_note }}</div>{% endif %}
+                <div class="version-actions">
+                  {% if v.status == 'pending' %}
+                    <button type="button" class="btn-withdraw" data-withdraw="{{ v.id }}">↩ 撤回</button>
+                  {% elif v.status == 'draft' %}
+                    <button type="button" class="btn-edit-submit" data-edit-submission="{{ v.id }}">✎ 编辑并提交</button>
+                    <button type="button" class="btn-discard" data-discard="{{ v.id }}">🗑 废弃</button>
+                  {% elif v.status == 'rejected' %}
+                    <button type="button" class="btn-edit-submit" data-edit-submission="{{ v.id }}">✎ 编辑并提交</button>
+                    <button type="button" class="btn-discard" data-discard="{{ v.id }}">🗑 废弃</button>
+                  {% elif v.status == 'published' %}
+                    {% if v.id == g.latest_published_id %}
+                      <button type="button" class="btn-iterate" data-iterate="{{ v.id }}">↻ 更新迭代</button>
+                    {% else %}
+                      <span class="record-action-static" title="历史版本仅可查看，最新版本才能进行更新迭代">历史版本 · 仅查看</span>
+                    {% endif %}
+                  {% elif v.status == 'superseded' %}
+                    <span class="record-action-static">已替代</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
 </div>
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    MyUploadsPager.init({ perPage: 10 });
+    MySkills.init({ container: '#mySkillsGrid' });
   });
 </script>
 {% endblock %}

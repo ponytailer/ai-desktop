@@ -119,24 +119,44 @@ def my_uploads(request: Request, db: Session = Depends(get_db)):
         "approved": sum(1 for v in versions if v.status == STATUS_PUBLISHED),
     }
 
-    # 计算「每个 skill 的最新已发布版本」id 集合（跨所有提交者），
-    # 用于限定只有最新版本才能「更新迭代」，历史版本只读。
-    skill_ids = {v.skill_id for v in versions}
-    latest_rows = (
-        db.query(SkillVersion.id, SkillVersion.skill_id)
-        .filter(
-            SkillVersion.skill_id.in_(skill_ids),
-            SkillVersion.status == STATUS_PUBLISHED,
+    # 按 Skill 分组：卡片以「技能」为单位，点击卡片进入查看该技能的版本历史。
+    groups_map: dict[int, list[SkillVersion]] = {}
+    for v in versions:
+        groups_map.setdefault(v.skill_id, []).append(v)
+
+    groups: list[dict] = []
+    for skill_id, vs in groups_map.items():
+        skill = vs[0].skill
+        # 版本历史按创建时间倒序（最新版在最前）
+        sorted_vs = sorted(
+            vs, key=lambda x: (x.created_at or x.submitted_at), reverse=True
         )
-        .order_by(SkillVersion.skill_id, SkillVersion.id.desc())
-        .all()
+        published = [v for v in vs if v.status == STATUS_PUBLISHED]
+        # 最新已发布版本 id（用于限定只有最新版本可「更新迭代」）
+        latest_published_id = max((v.id for v in published), default=None)
+        # 卡片主版本：优先最新已发布版本，否则取创建时间最新的版本
+        primary = (
+            next(v for v in sorted_vs if v.status == STATUS_PUBLISHED)
+            if published
+            else sorted_vs[0]
+        )
+        groups.append(
+            {
+                "skill": skill,
+                "versions": sorted_vs,
+                "primary": primary,
+                "latest_published_id": latest_published_id,
+                "version_count": len(vs),
+                "statuses": sorted({v.status for v in vs}),
+                "has_published": bool(published),
+            }
+        )
+
+    # 排序：已发布的技能优先置顶，其次按主版本提交时间倒序
+    groups.sort(
+        key=lambda g: (not g["has_published"], g["primary"].submitted_at),
+        reverse=True,
     )
-    latest_ids: set[int] = set()
-    _seen: set[int] = set()
-    for vid, sid in latest_rows:
-        if sid not in _seen:
-            _seen.add(sid)
-            latest_ids.add(vid)
 
     return templates.TemplateResponse(
         request,
@@ -144,9 +164,8 @@ def my_uploads(request: Request, db: Session = Depends(get_db)):
         {
             **ctx,
             "page": "my_uploads",
-            "versions": versions,
             "counts": counts,
-            "latest_ids": latest_ids,
+            "groups": groups,
         },
     )
 

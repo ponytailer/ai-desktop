@@ -611,6 +611,7 @@ const MyUploadsPager = (function () {
   }
 
   function render() {
+    if (!_pager) return;
     const vis = visibleItems();
     const total = vis.length;
     const totalPages = Math.max(1, Math.ceil(total / _perPage));
@@ -655,7 +656,50 @@ document.addEventListener('click', (e) => {
   if (!card) return;
   const filter = card.getAttribute('data-filter');
   $$('[data-filter]', bar).forEach((c) => c.classList.toggle('is-active', c === card));
-  MyUploadsPager.setFilter(filter);
+  MySkills.setFilter(filter);
+});
+
+// ---------- 我的技能：卡片过滤 + 点击打开详情 ----------
+const MySkills = (function () {
+  let _cards = [];
+  let _filter = 'all';
+
+  function init(opts = {}) {
+    const container = document.querySelector(opts.container || '#mySkillsGrid');
+    if (!container) return;
+    _cards = Array.from(container.querySelectorAll('.my-skill-card[data-status]'));
+    render();
+  }
+
+  function setFilter(f) {
+    _filter = f;
+    render();
+  }
+
+  function render() {
+    _cards.forEach((c) => {
+      const st = (c.getAttribute('data-status') || '').split(' ');
+      const show = _filter === 'all' || st.includes(_filter);
+      c.style.display = show ? '' : 'none';
+    });
+  }
+
+  function openSkill(skillId) {
+    const src = document.querySelector(
+      '.skill-detail-source[data-skill-id="' + skillId + '"]'
+    );
+    if (!src) return;
+    Modal.open(src.innerHTML, { wide: true });
+  }
+
+  return { init, setFilter, openSkill };
+})();
+
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('[data-open-skill]');
+  if (!card) return;
+  e.preventDefault();
+  MySkills.openSkill(card.getAttribute('data-open-skill'));
 });
 
 // ---------- 更新迭代 ----------
