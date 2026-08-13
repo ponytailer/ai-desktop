@@ -74,6 +74,9 @@
           <button class="btn-edit-submit" data-edit-submission="{{ v.id }}">
             ✎ 编辑并提交
           </button>
+          <button class="btn-discard" data-discard="{{ v.id }}">
+            🗑 废弃
+          </button>
         {% elif v.status == 'published' %}
           {% if v.id in latest_ids %}
             <button class="btn-iterate" data-iterate="{{ v.id }}">

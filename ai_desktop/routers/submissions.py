@@ -8,7 +8,8 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, \
+    UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
@@ -19,8 +20,9 @@ from ..models import (
     STATUS_DRAFT,
     STATUS_PENDING,
     STATUS_PUBLISHED,
+    STATUS_REJECTED,
     Skill,
-    SkillVersion,
+    SkillVersion
 )
 
 router = APIRouter()
@@ -80,6 +82,42 @@ def _bump_version(current: str) -> str:
     return ".".join(str(n) for n in nums)
 
 
+def _version_key(v: str) -> tuple[int, int, int]:
+    """将版本号解析为可比较的 (major, minor, patch) 元组，便于语义排序。"""
+    parts = re.split(r"[.\-]", str(v or "0.0.0"))
+    nums: list[int] = []
+    for p in parts[:3]:
+        try:
+            nums.append(int(p))
+        except ValueError:
+            nums.append(0)
+    while len(nums) < 3:
+        nums.append(0)
+    return (nums[0], nums[1], nums[2])
+
+
+def _latest_version_string(db: Session, skill_id: int) -> str:
+    """返回该 skill 所有版本中语义最大的版本号（无版本则返回 '0.0.0'）。"""
+    rows = db.query(SkillVersion.version).filter(
+        SkillVersion.skill_id == skill_id).all()
+    if not rows:
+        return "0.0.0"
+    return max((r[0] for r in rows), key=_version_key)
+
+
+def _suggest_next_version(db: Session, skill_id: int,
+    current_version: str) -> str:
+    """被拒绝 / 草稿重新提交时建议的版本号：
+
+    - 若该版本已 >= 全量最新版本，保持原版本号（没有更新的版本迭代上去）
+    - 否则（已有更新的版本发布）自动 patch +1，避免与已发布版本冲突
+    """
+    latest = _latest_version_string(db, skill_id)
+    if _version_key(current_version) >= _version_key(latest):
+        return current_version
+    return _bump_version(latest)
+
+
 def _common_top_dir(names: list[str]) -> str | None:
     """若 zip 内所有条目都共享同一顶层目录（如 my-skill/...），返回该顶层名；否则 None。"""
     tops: set[str] = set()
@@ -111,7 +149,8 @@ def _extract_skill_zip(zip_path: Path, dest_dir: Path) -> int:
         # 安全校验：禁止路径穿越
         for n in names:
             target = (dest_dir / n).resolve()
-            if target != dest_dir and not str(target).startswith(str(dest_dir) + os.sep):
+            if target != dest_dir and not str(target).startswith(
+                str(dest_dir) + os.sep):
                 raise HTTPException(400, f"zip 含非法路径：{n}")
         top = _common_top_dir(names)
         top_prefix = (top + "/") if top else ""
@@ -297,16 +336,16 @@ def withdraw_version(version_id: int, db: Session = Depends(get_db)):
 
 @router.post("/api/skills/{version_id}/discard")
 def discard_version(version_id: int, db: Session = Depends(get_db)):
-    """废弃草稿版本：彻底删除该草稿版本（含附件文件）。
+    """废弃版本：彻底删除该版本（含附件文件）。
 
-    - 仅「草稿」状态可废弃（已提交/已发布版本不允许）
+    - 仅「草稿」或「被拒绝」状态可废弃（已提交/已发布版本不允许）
     - 若该技能在删除此版本后已无任何版本，则一并删除孤儿 Skill 主记录
     """
     v = db.get(SkillVersion, version_id)
     if not v:
         raise HTTPException(404, "version not found")
-    if v.status != STATUS_DRAFT:
-        raise HTTPException(400, "只有草稿版本可以废弃")
+    if v.status not in (STATUS_DRAFT, STATUS_REJECTED):
+        raise HTTPException(400, "只有草稿或被拒绝的版本可以废弃")
     skill = v.skill
 
     # 清理附件 zip 文件
@@ -339,6 +378,7 @@ async def edit_version(
     scope: str = Form(SCOPE_PUBLIC),
     changelog: str = Form(""),
     detail: str = Form(""),
+    version: str = Form(""),
     file: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ):
@@ -352,6 +392,29 @@ async def edit_version(
     v.set_tags(_split_tags(tags))
     v.scope = scope
     v.changelog = changelog
+
+    # 版本号重新检查：重新编辑提交时，若已有更新的版本迭代上去，
+    # 必须顺延，避免与已发布版本冲突。
+    if version and version.strip():
+        version = version.strip()
+        if len(version) < 3:
+            raise HTTPException(400, "版本号不合法")
+        others = (
+            db.query(SkillVersion)
+            .filter(SkillVersion.skill_id == v.skill_id,
+                    SkillVersion.id != v.id)
+            .all()
+        )
+        others_max_key = max((_version_key(o.version) for o in others),
+                             default=None)
+        if others_max_key is not None and _version_key(
+            version) <= others_max_key:
+            suggested = _suggest_next_version(db, v.skill_id, version)
+            raise HTTPException(
+                400,
+                f"版本号 {version} 低于或等于已有版本，请使用 {suggested}",
+            )
+        v.version = version
 
     if file is not None and (file.filename or "").lower().endswith(".zip"):
         skill_folder = ATTACHMENT_ROOT / str(v.skill_id)
@@ -456,8 +519,10 @@ def card_payload(version_id: int, request: Request,
         "download_url": f"/api/skills/{v.id}/download",
         "install_command": f"npx @company/skillhub add {request.url.scheme}://{request.url.netloc}/api/skills/{v.id}/download",
         "install_paths": {
-            "workbuddy": str(home / ".workbuddy" / "skills" / _sanitize_segment(v.skill.name)),
-            "claudecode": str(home / ".claude" / "skills" / _sanitize_segment(v.skill.name)),
+            "workbuddy": str(home / ".workbuddy" / "skills" / _sanitize_segment(
+                v.skill.name)),
+            "claudecode": str(
+                home / ".claude" / "skills" / _sanitize_segment(v.skill.name)),
         },
     }
 
@@ -479,7 +544,8 @@ def skill_detail(version_id: int, db: Session = Depends(get_db)):
             import zipfile
             with zipfile.ZipFile(zip_path) as zf:
                 md_name = next(
-                    (n for n in zf.namelist() if n.upper().endswith("SKILL.MD")), None
+                    (n for n in zf.namelist() if
+                     n.upper().endswith("SKILL.MD")), None
                 )
                 if md_name:
                     skill_md = zf.read(md_name).decode("utf-8", "replace")
@@ -506,7 +572,8 @@ def skill_detail(version_id: int, db: Session = Depends(get_db)):
         "changelog": v.changelog,
         "status_label": v.status_label,
         "scope_label": v.scope_label,
-        "submitted_at": v.submitted_at.strftime("%Y-%m-%d") if v.submitted_at else "",
+        "submitted_at": v.submitted_at.strftime(
+            "%Y-%m-%d") if v.submitted_at else "",
         "skill_md": skill_md,
         "has_md": has_md,
     }

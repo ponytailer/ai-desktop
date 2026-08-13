@@ -14,6 +14,7 @@ from ..models import (
     STATUS_REJECTED,
     SkillVersion,
 )
+from .submissions import _suggest_next_version
 
 router = APIRouter()
 
@@ -27,6 +28,7 @@ def review_payload(version_id: int, db: Session = Depends(get_db)):
         "id": v.id,
         "name": v.skill.name,
         "version": v.version,
+        "suggested_version": _suggest_next_version(db, v.skill_id, v.version),
         "summary": v.summary,
         "detail": v.detail,
         "changelog": v.changelog,

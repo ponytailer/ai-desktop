@@ -308,24 +308,30 @@ document.addEventListener('click', async (e) => {
   });
 });
 
-// ---------- 废弃草稿 ----------
+// ---------- 废弃草稿 / 被拒绝版本 ----------
 document.addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-discard]');
   if (!btn) return;
   e.preventDefault();
   const vid = btn.getAttribute('data-discard');
 
-  let meta = { name: '该草稿', version: '' };
+  let meta = { name: '该版本', version: '', statusLabel: '草稿' };
   try {
     const d = await getJson(`/api/reviews/${vid}`);
-    if (d && d.name) meta = { name: d.name, version: d.version || '' };
+    if (d && d.name) {
+      meta = {
+        name: d.name,
+        version: d.version || '',
+        statusLabel: d.status_label || '草稿',
+      };
+    }
   } catch (_) { /* 网络异常时用兜底文案 */ }
 
   openConfirmModal({
-    title: '废弃草稿',
+    title: '废弃版本',
     icon: '🗑',
     iconBg: 'var(--accent-red)',
-    desc: '废弃后将彻底删除该草稿及其附件，且不可恢复。请确认是否要废弃。',
+    desc: `废弃后将彻底删除该${meta.statusLabel}版本及其附件，且不可恢复。请确认是否要废弃。`,
     preview: {
       icon: '📦',
       iconColor: 'var(--accent-red)',
@@ -335,7 +341,7 @@ document.addEventListener('click', async (e) => {
     danger: true,
     onConfirm: async () => {
       await postForm(`/api/skills/${vid}/discard`, new FormData());
-      toast('草稿已废弃', 'success');
+      toast('版本已废弃', 'success');
       setTimeout(() => location.reload(), 600);
     },
   });
@@ -349,17 +355,26 @@ document.addEventListener('click', async (e) => {
   const vid = btn.getAttribute('data-edit-submission');
   try {
     const data = await getJson(`/api/reviews/${vid}`);
+    const isRejected = data.status === 'rejected';
     const tpl = `
       <div class="modal-head">
         <h3>
           <span class="modal-icon" style="background:${escapeHtml(data.tags && data.tags.length ? '#5B6CFF' : '#5B6CFF')}">📝</span>
-          编辑草稿
+          编辑并提交
         </h3>
         <button class="modal-close">×</button>
       </div>
       <form id="editForm" enctype="multipart/form-data">
         <div class="modal-section">
-          <p class="muted" style="margin: 0;">修改草稿内容后重新提交审核。</p>
+          <p class="muted" style="margin: 0;">${isRejected ? '该版本已被拒绝，修改后重新提交审核。' : '修改内容后重新提交审核。'}</p>
+        </div>
+
+        <div class="modal-section">
+          <div class="field">
+            <label>版本号${isRejected ? '（已根据最新发布版本自动顺延）' : ''}</label>
+            <input name="version" value="${escapeAttr(data.suggested_version || data.version || '')}" placeholder="例如 1.0.0">
+            <p class="muted" style="margin: 4px 0 0; font-size: 12px;">当前版本 ${escapeHtml(data.version || '')} → 提交后将以填写的版本号进入审核。</p>
+          </div>
         </div>
 
         <div class="modal-section">

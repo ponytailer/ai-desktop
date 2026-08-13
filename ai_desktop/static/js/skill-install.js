@@ -13,8 +13,22 @@
     a.remove();
   }
 
+  // 安装/下载成功后，就地把来源卡片的下载数 +1（与后端 downloads += 1 保持一致）
+  function bumpCardCount() {
+    const card = current.sourceCard;
+    if (!card) return;
+    const countEl = card.querySelector(".download-count");
+    if (countEl) {
+      const cur = parseInt(countEl.textContent.replace(/,/g, ""), 10) || 0;
+      countEl.textContent = (cur + 1).toLocaleString();
+    }
+    if (card.dataset.downloads) {
+      card.dataset.downloads = String(parseInt(card.dataset.downloads, 10) + 1);
+    }
+  }
+
   async function openInstallModal(id, name) {
-    current = { id, name, paths: null };
+    current = { id, name };
     const tpl = `
       <div class="modal-head">
         <h3>安装 ${name}</h3>
@@ -36,7 +50,7 @@
         <div class="install-confirm" hidden>
           <div class="install-confirm-head">将把该 Skill 解压安装到以下路径：</div>
           <input type="text" class="install-path-input" id="installPath" spellcheck="false" />
-          <div class="install-confirm-note">🔧 若你的 skills 目录不是默认位置，可手动修改（支持 ~ 简写）。⚠️ 该目录若已存在同名 Skill，将被覆盖。</div>
+          <div class="install-confirm-note">🔧 可手动修改安装目录：macOS/Linux 支持 ~ 简写；Windows 请填 <code>C:\Users\你的用户名\...</code> 绝对路径（把「你的用户名」换成实际用户名）。⚠️ 以你填写的路径为准安装，已存在同名 Skill 将被覆盖。</div>
           <div class="install-confirm-actions">
             <button type="button" class="btn btn-ghost" data-install-back>返回</button>
             <button type="button" class="btn btn-dark" data-install-confirm>确认安装</button>
@@ -44,18 +58,21 @@
         </div>
         </div>`;
     Modal.open(tpl);
-    // 预取按当前系统算出的真实默认路径（Windows 为 C:\Users\...，非 ~）
-    try {
-      const info = await getJson(`/api/skills/${id}/card`);
-      if (info && info.install_paths) current.paths = info.install_paths;
-    } catch (_) {
-      /* 取不到则用 ~ 回退 */
-    }
+  }
+
+  function isWindows() {
+    return /Windows/i.test(navigator.userAgent || navigator.platform || "");
   }
 
   function defaultPathFor(target) {
-    if (current.paths && current.paths[target]) return current.paths[target];
+    // 用客户端系统对应的默认路径预填，避免直接暴露服务端家目录绝对路径
+    // （在 codespace / 远程部署场景下，后端 Path.home() 是容器路径，对客户端无意义）
     const dir = target === "workbuddy" ? ".workbuddy/skills" : ".claude/skills";
+    if (isWindows()) {
+      // Windows：用对应盘符风格路径（用户名需用户按本机实际情况替换）
+      return `C:\\Users\\你的用户名\\${dir}\\${current.name}`;
+    }
+    // macOS / Linux：用 ~ 简写
     return `~/${dir}/${current.name}`;
   }
 
@@ -81,6 +98,7 @@
         `/api/skills/${current.id}/install`,
         payload
       );
+      bumpCardCount();
       toast(`已安装到 ${data.path}`, "success");
       Modal.close();
     } catch (err) {
@@ -97,6 +115,7 @@
         openBtn.getAttribute("data-skill-install"),
         openBtn.getAttribute("data-skill-name") || "Skill"
       );
+      current.sourceCard = openBtn.closest(".skill-card");
       return;
     }
 
@@ -105,6 +124,7 @@
       const mode = opt.getAttribute("data-install");
       if (mode === "download") {
         triggerDownload(`/api/skills/${current.id}/download`);
+        bumpCardCount();
         Modal.close();
         return;
       }
