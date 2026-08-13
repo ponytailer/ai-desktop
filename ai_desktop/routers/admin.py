@@ -100,7 +100,7 @@ def admin_skill_reviews(request: Request, db: Session = Depends(get_db)):
     pending = (
         db.query(SkillVersion)
         .filter(SkillVersion.status == STATUS_PENDING)
-        .order_by(SkillVersion.submitted_at.asc())
+        .order_by(SkillVersion.submitted_at.desc(), SkillVersion.id.desc())
         .all()
     )
     history = (
