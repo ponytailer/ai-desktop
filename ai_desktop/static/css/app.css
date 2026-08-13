@@ -1000,47 +1000,29 @@ h1.page-title {
 .install-option .io-text b { font-size: 14px; color: var(--ink-1); }
 .install-option .io-text small { font-size: 12px; color: var(--ink-3); }
 
-.install-confirm {
+.install-help {
   margin-top: 4px;
-  padding: 14px;
+  padding: 16px;
   border-radius: 10px;
-  background: #FFFBEB;
-  border: 1px solid #FCD34D;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
 }
-.install-confirm-head { font-size: 13px; color: #92400E; margin-bottom: 8px; }
+.install-help-title { font-size: 14px; font-weight: 700; color: var(--ink-1); margin-bottom: 10px; }
+.install-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 14px; }
+.install-steps li { color: var(--ink-2); font-size: 13px; line-height: 1.6; }
+.install-steps li b { color: var(--ink-1); }
+.install-steps p { margin: 4px 0; }
 .install-path {
+  display: inline-block;
   font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   font-size: 13px;
-  color: #1F2937;
-  background: white;
-  border: 1px solid #FDE68A;
+  color: var(--ink-1);
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   word-break: break-all;
 }
-.install-path-input {
-  width: 100%;
-  box-sizing: border-box;
-  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 13px;
-  color: #1F2937;
-  background: white;
-  border: 1px solid #D1D5DB;
-  border-radius: 8px;
-  padding: 10px 12px;
-  outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
-}
-.install-path-input:focus {
-  border-color: #6366F1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
-.install-confirm-note {
-  font-size: 12px;
-  color: #B45309;
-  margin: 10px 0 12px;
-}
-.install-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* 批量改配额提示条：醒目但不刺眼 */
 .batch-quota-notice {
@@ -2893,7 +2875,6 @@ h1, h2, h3, h4,
 .field textarea:focus,
 .field select:focus,
 select.select:focus,
-.install-path-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .dropdown.open .dropdown-trigger { border-color: var(--accent); }
 .dropdown-item.is-active { background: var(--accent-soft); color: var(--accent); }
 .pagination .page-btn:hover:not(:disabled):not(.is-active) { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
@@ -3042,6 +3023,8 @@ body, .navbar, .skill-card, .modal, .todo-item, .todo-col, .stat-row,
 [data-theme="dark"] .dropdown-item:hover,
 [data-theme="dark"] .user-dropdown-item:hover { background: var(--bg-soft); }
 [data-theme="dark"] .install-option:hover { border-color: var(--accent); background: var(--bg-soft); }
+[data-theme="dark"] .install-help { background: #201B15; border-color: var(--line); }
+[data-theme="dark"] .install-path { background: #16130F; border-color: var(--line); color: var(--ink-1); }
 [data-theme="dark"] .tabs-bar button.active { background: var(--surface); color: var(--ink-1); }
 [data-theme="dark"] .modal-close-x:hover,
 [data-theme="dark"] .user-dropdown-arrow { color: var(--ink-1); }
