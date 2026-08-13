@@ -230,7 +230,8 @@ async def upload_skill(
         summary=summary,
         detail=detail,
         scope=scope,
-        status=STATUS_PUBLISHED if publish_now == "true" else STATUS_DRAFT,
+        # 新创建默认进入「待审核」，不再先落草稿（草稿仅由撤回产生）
+        status=STATUS_PUBLISHED if publish_now == "true" else STATUS_PENDING,
         submitted_by=user.name,
         submitted_at=datetime.utcnow(),
         changelog="",

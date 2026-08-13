@@ -266,7 +266,7 @@ document.addEventListener('click', async (e) => {
     const fd = new FormData(form);
     try {
       const res = await postForm('/api/skills/upload', fd);
-      toast('已提交，当前状态：' + (res.status === 'published' ? '已发布' : '草稿'), 'success');
+      toast('已提交，当前状态：' + (res.status === 'published' ? '已发布' : '待审核'), 'success');
       Modal.close();
       setTimeout(() => location.reload(), 600);
     } catch (err) {
