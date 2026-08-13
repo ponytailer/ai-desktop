@@ -294,6 +294,42 @@ def withdraw_version(version_id: int, db: Session = Depends(get_db)):
     return {"ok": True, "status": v.status}
 
 
+@router.post("/api/skills/{version_id}/discard")
+def discard_version(version_id: int, db: Session = Depends(get_db)):
+    """废弃草稿版本：彻底删除该草稿版本（含附件文件）。
+
+    - 仅「草稿」状态可废弃（已提交/已发布版本不允许）
+    - 若该技能在删除此版本后已无任何版本，则一并删除孤儿 Skill 主记录
+    """
+    v = db.get(SkillVersion, version_id)
+    if not v:
+        raise HTTPException(404, "version not found")
+    if v.status != STATUS_DRAFT:
+        raise HTTPException(400, "只有草稿版本可以废弃")
+    skill = v.skill
+
+    # 清理附件 zip 文件
+    zip_path = _resolve_zip_path(v)
+    if zip_path and zip_path.exists():
+        try:
+            zip_path.unlink()
+        except OSError:
+            pass
+
+    # 删除版本行；若该技能已无任何版本，连带删除孤儿主记录
+    db.delete(v)
+    db.flush()
+    remaining = (
+        db.query(SkillVersion)
+        .filter(SkillVersion.skill_id == skill.id)
+        .count()
+    )
+    if remaining == 0:
+        db.delete(skill)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/api/skills/{version_id}/edit")
 async def edit_version(
     version_id: int,
@@ -517,6 +553,17 @@ async def iterate_version(
         raise HTTPException(404, "源版本不存在")
     if src.status != STATUS_PUBLISHED:
         raise HTTPException(400, "只有已发布版本可以迭代")
+    # 仅「最新已发布版本」可迭代：历史版本只能查看记录，不能再次迭代。
+    # 以「已发布版本中 id 最大者」作为最新（自增 id 单调递增，判定确定无歧义）。
+    latest = (
+        db.query(SkillVersion)
+        .filter(SkillVersion.skill_id == src.skill_id,
+                SkillVersion.status == STATUS_PUBLISHED)
+        .order_by(SkillVersion.id.desc())
+        .first()
+    )
+    if latest is None or latest.id != src.id:
+        raise HTTPException(400, "只有最新版本可以更新迭代，历史版本仅可查看")
 
     name = name.strip()
     version = version.strip()

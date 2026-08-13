@@ -119,6 +119,25 @@ def my_uploads(request: Request, db: Session = Depends(get_db)):
         "approved": sum(1 for v in versions if v.status == STATUS_PUBLISHED),
     }
 
+    # 计算「每个 skill 的最新已发布版本」id 集合（跨所有提交者），
+    # 用于限定只有最新版本才能「更新迭代」，历史版本只读。
+    skill_ids = {v.skill_id for v in versions}
+    latest_rows = (
+        db.query(SkillVersion.id, SkillVersion.skill_id)
+        .filter(
+            SkillVersion.skill_id.in_(skill_ids),
+            SkillVersion.status == STATUS_PUBLISHED,
+        )
+        .order_by(SkillVersion.skill_id, SkillVersion.id.desc())
+        .all()
+    )
+    latest_ids: set[int] = set()
+    _seen: set[int] = set()
+    for vid, sid in latest_rows:
+        if sid not in _seen:
+            _seen.add(sid)
+            latest_ids.add(vid)
+
     return templates.TemplateResponse(
         request,
         "my_uploads.html",
@@ -127,6 +146,7 @@ def my_uploads(request: Request, db: Session = Depends(get_db)):
             "page": "my_uploads",
             "versions": versions,
             "counts": counts,
+            "latest_ids": latest_ids,
         },
     )
 

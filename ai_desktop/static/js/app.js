@@ -45,6 +45,71 @@ function toast(msg, type = 'info') {
   setTimeout(() => el.remove(), 3200);
 }
 
+// ---------- 通用二次确认弹窗（复用项目 Modal 框架） ----------
+function openConfirmModal(opts) {
+  const {
+    title = '确认操作',
+    icon = '⚠',
+    iconBg = 'var(--accent-red)',
+    desc = '',
+    preview = null,
+    confirmText = '确认',
+    danger = false,
+    onConfirm,
+  } = opts || {};
+
+  const previewHtml = preview
+    ? `<div class="modal-section">
+         <div class="confirm-preview">
+           <span class="confirm-preview-ico" style="color:${preview.iconColor || iconBg}">${preview.icon || ''}</span>
+           <span class="confirm-preview-title"></span>
+         </div>
+       </div>`
+    : '';
+
+  const tpl = `
+    <div class="modal-head">
+      <h3>
+        <span class="modal-icon" style="background:${iconBg}">${escapeHtml(icon)}</span>
+        ${escapeHtml(title)}
+      </h3>
+      <button class="modal-close" type="button" aria-label="关闭">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section">
+        <p class="confirm-warn">${escapeHtml(desc)}</p>
+      </div>
+      ${previewHtml}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" type="button" data-confirm-cancel>取消</button>
+      <button class="btn ${danger ? 'btn-danger' : 'btn-dark'}" type="button" data-confirm-ok>${escapeHtml(confirmText)}</button>
+    </div>`;
+
+  const m = Modal.open(tpl);
+  if (preview) {
+    const t = m.querySelector('.confirm-preview-title');
+    if (t) t.textContent = preview.title; // textContent 防 XSS
+  }
+
+  let busy = false;
+  m.querySelectorAll('[data-confirm-cancel]').forEach((b) => b.addEventListener('click', () => Modal.close()));
+  const ok = m.querySelector('[data-confirm-ok]');
+  ok.addEventListener('click', async () => {
+    if (busy) return;
+    busy = true;
+    ok.disabled = true;
+    try {
+      if (onConfirm) await onConfirm();
+      Modal.close();
+    } catch (err) {
+      toast(err.message || '操作失败，请重试', 'error');
+      ok.disabled = false;
+      busy = false;
+    }
+  });
+}
+
 // ---------- 通用 fetch ----------
 async function postForm(url, data) {
   const fd = data instanceof FormData ? data : toFormData(data);
@@ -216,15 +281,64 @@ document.addEventListener('click', async (e) => {
   if (!btn) return;
   e.preventDefault();
   const vid = btn.getAttribute('data-withdraw');
-  const ok = confirm('确认撤回这条待审核提交？撤回后会回到草稿状态，可再次编辑后提交。');
-  if (!ok) return;
+
+  let meta = { name: '该提交', version: '' };
   try {
-    const res = await postForm(`/api/skills/${vid}/withdraw`, new FormData());
-    toast('已撤回，可重新编辑后再提交', 'success');
-    setTimeout(() => location.reload(), 600);
-  } catch (err) {
-    toast('撤回失败：' + err.message, 'error');
-  }
+    const d = await getJson(`/api/reviews/${vid}`);
+    if (d && d.name) meta = { name: d.name, version: d.version || '' };
+  } catch (_) { /* 网络异常时用兜底文案 */ }
+
+  openConfirmModal({
+    title: '撤回提交',
+    icon: '↩',
+    iconBg: 'var(--accent)',
+    desc: '确认撤回这条待审核提交？撤回后会回到草稿状态，可再次编辑后提交。',
+    preview: {
+      icon: '📦',
+      iconColor: 'var(--accent)',
+      title: meta.version ? `${meta.name} · v${meta.version}` : meta.name,
+    },
+    confirmText: '确认撤回',
+    danger: false,
+    onConfirm: async () => {
+      await postForm(`/api/skills/${vid}/withdraw`, new FormData());
+      toast('已撤回，可重新编辑后再提交', 'success');
+      setTimeout(() => location.reload(), 600);
+    },
+  });
+});
+
+// ---------- 废弃草稿 ----------
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-discard]');
+  if (!btn) return;
+  e.preventDefault();
+  const vid = btn.getAttribute('data-discard');
+
+  let meta = { name: '该草稿', version: '' };
+  try {
+    const d = await getJson(`/api/reviews/${vid}`);
+    if (d && d.name) meta = { name: d.name, version: d.version || '' };
+  } catch (_) { /* 网络异常时用兜底文案 */ }
+
+  openConfirmModal({
+    title: '废弃草稿',
+    icon: '🗑',
+    iconBg: 'var(--accent-red)',
+    desc: '废弃后将彻底删除该草稿及其附件，且不可恢复。请确认是否要废弃。',
+    preview: {
+      icon: '📦',
+      iconColor: 'var(--accent-red)',
+      title: meta.version ? `${meta.name} · v${meta.version}` : meta.name,
+    },
+    confirmText: '确认废弃',
+    danger: true,
+    onConfirm: async () => {
+      await postForm(`/api/skills/${vid}/discard`, new FormData());
+      toast('草稿已废弃', 'success');
+      setTimeout(() => location.reload(), 600);
+    },
+  });
 });
 
 // ---------- 编辑草稿 ----------
