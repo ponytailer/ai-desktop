@@ -14,6 +14,7 @@
   --bg: #FFFFFF;
   --bg-soft: #F8FAFC;
   --bg-mute: #F3F4F6;
+  --bg-card: #FFFFFF;     /* 卡片/浮层（下拉、搜索框、分页器）实底背景 */
 
   --brand: #0F172A;
   --brand-2: #1F2937;
@@ -2777,6 +2778,7 @@ select.select:focus {
   --bg-soft: #EFEAE0;
   --bg-mute: #E7E0D2;
   --surface: #FBF9F3;     /* 暖卡片 */
+  --bg-card: #FBF9F3;     /* 卡片/浮层实底背景 */
 
   /* 品牌 = 暖墨（原 --brand 蓝黑 → 暖黑） */
   --brand: #1B1916;
@@ -2993,6 +2995,7 @@ body, .navbar, .skill-card, .modal, .todo-item, .todo-col, .stat-row,
   --bg-soft: #1E1A15;
   --bg-mute: #272019;
   --surface: #211C16;
+  --bg-card: #211C16;     /* 卡片/浮层实底背景 */
 
   --brand: #EDE7DC;
   --brand-2: #C9C1B3;
@@ -3493,11 +3496,11 @@ a.counter:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px;
 .month-trigger {
   display: inline-flex; align-items: center; gap: 6px;
   height: 30px; padding: 0 10px;
-  border: none; background: transparent;
+  border: 1px solid var(--border); background: var(--bg-card);
   color: var(--ink-1); font-weight: 600; font-size: 14px;
   border-radius: 7px; cursor: pointer;
   font-variant-numeric: tabular-nums;
-  transition: background .15s ease;
+  transition: background .15s ease, border-color .15s ease;
 }
 .month-trigger:hover { background: var(--bg-mute); }
 .month-caret { font-size: 10px; color: var(--ink-3); transform: translateY(1px); }
