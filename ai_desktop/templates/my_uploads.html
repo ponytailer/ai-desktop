@@ -63,14 +63,25 @@
           <button class="btn-withdraw" data-withdraw="{{ v.id }}">
             ↩ 撤回
           </button>
-        {% elif v.status == 'draft' or v.status == 'rejected' %}
+        {% elif v.status == 'draft' %}
+          <button class="btn-edit-submit" data-edit-submission="{{ v.id }}">
+            ✎ 编辑并提交
+          </button>
+          <button class="btn-discard" data-discard="{{ v.id }}">
+            🗑 废弃
+          </button>
+        {% elif v.status == 'rejected' %}
           <button class="btn-edit-submit" data-edit-submission="{{ v.id }}">
             ✎ 编辑并提交
           </button>
         {% elif v.status == 'published' %}
-          <button class="btn-iterate" data-iterate="{{ v.id }}">
-            ↻ 更新迭代
-          </button>
+          {% if v.id in latest_ids %}
+            <button class="btn-iterate" data-iterate="{{ v.id }}">
+              ↻ 更新迭代
+            </button>
+          {% else %}
+            <span class="record-action-static" title="历史版本仅可查看，最新版本才能进行更新迭代">历史版本 · 仅查看</span>
+          {% endif %}
         {% elif v.status == 'superseded' %}
           <span class="record-action-static">已替代</span>
         {% endif %}
