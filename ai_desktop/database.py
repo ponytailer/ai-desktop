@@ -47,9 +47,10 @@ def init_db() -> None:
     # 轻量迁移：为已存在的表补齐新增列（SQLite 不擅长 ALTER，逐个判断）
     _migrate_columns()
 
-    from .seed import seed_if_empty
+    from .seed import seed_api_usage_if_empty, seed_if_empty
 
     seed_if_empty()
+    seed_api_usage_if_empty()
 
 
 def _migrate_columns() -> None:

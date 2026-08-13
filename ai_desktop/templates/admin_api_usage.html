@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  {% include "partials/_admin_subnav.html" %}
+  <div class="hero-row">
+    <div class="hero-intro">
+      <div class="eyebrow">📊 配额管理</div>
+      <h1 class="page-title">API 用量分析</h1>
+      <p class="page-subtitle">查看每个月已分配 API Key 的用户的使用情况，对比「已使用 / 分配」，按使用率调整后续配额。</p>
+    </div>
+    <div class="hero-actions">
+      <div class="month-switch" id="monthSwitch">
+        <button class="ms-btn" id="prevMonth" type="button" aria-label="上一月">‹</button>
+        <div class="month-dropdown" id="monthDropdown">
+          <button class="month-trigger" id="monthTrigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="month-current">{{ current_month }}</span>
+            <span class="month-caret">▾</span>
+          </button>
+          <div class="month-menu" id="monthMenu" role="menu">
+            {% for m in months %}
+            <button class="month-item {% if m == current_month %}is-current{% endif %}" type="button" role="menuitem" data-month="{{ m }}">
+              {{ m }}{% if m == current_month %}<span class="month-check">✓</span>{% endif %}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+        <button class="ms-btn" id="nextMonth" type="button" aria-label="下一月">›</button>
+      </div>
+      {% if use_mock %}
+      <span class="demo-badge" title="当前 AI Gateway 为 mock 模式，演示数据用于展示界面；接入真实网关后可一键同步覆盖。">演示数据</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── 汇总卡 ── #}
+  <section class="counters usage-summary">
+    <div class="counter static">
+      <div class="v">{{ summary.user_count }}</div>
+      <div class="l">已分配用户</div>
+    </div>
+    <div class="counter static">
+      <div class="v">{{ "{:,}".format(summary.total_allocated) }}</div>
+      <div class="l">分配总额</div>
+    </div>
+    <div class="counter static">
+      <div class="v">{{ "{:,}".format(summary.total_used) }}</div>
+      <div class="l">已用总额</div>
+    </div>
+    <div class="counter static">
+      <div class="v" style="color: var(--accent-orange);">{{ summary.avg_rate }}%</div>
+      <div class="l">平均使用率</div>
+    </div>
+    <a class="counter {% if active_filter == 'over' %}is-active{% endif %}" href="#" data-usage-filter="over" title="点击仅看使用率 ≥ 90% 的用户">
+      <div class="v" style="color: var(--danger);">{{ summary.over_count }}</div>
+      <div class="l">高水位用户</div>
+    </a>
+    <a class="counter {% if active_filter == 'low' %}is-active{% endif %}" href="#" data-usage-filter="low" title="点击仅看使用率 ≤ 20% 的用户">
+      <div class="v" style="color: var(--ink-2);">{{ summary.low_count }}</div>
+      <div class="l">低水位用户</div>
+    </a>
+  </section>
+
+  {# ── 表格 ── #}
+  <div class="section-head">
+    <div class="sh-left">
+      <h2>{{ current_month }} 用量明细</h2>
+      {% if active_filter or q %}
+      <div class="filter-chip">
+        {% if active_filter == 'over' %}高水位（≥90%）{% elif active_filter == 'low' %}低水位（≤20%）{% endif %}
+        {% if q %}<span class="chip-q">· 搜索「{{ q }}」</span>{% endif %}
+        <button class="chip-clear" id="clearFilter" type="button" title="清除筛选">×</button>
+      </div>
+      {% endif %}
+    </div>
+    <div class="sh-right">
+      <div class="usage-search">
+        <span class="search-ico" aria-hidden="true">🔍</span>
+        <input id="usageSearch" type="text" placeholder="搜索姓名 / 工号" value="{{ q }}" autocomplete="off">
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="review-table usage-table">
+      <thead>
+        <tr>
+          <th>用户</th>
+          <th>部门</th>
+          <th>绑定消费组</th>
+          <th style="text-align: right;">分配额度</th>
+          <th style="text-align: right;">已使用</th>
+          <th style="width: 220px;">使用率</th>
+          <th>建议</th>
+          <th style="text-align: right; width: 110px;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="usageBody">
+        {% for r in rows %}
+        <tr data-user-id="{{ r.user_id }}" data-month="{{ current_month }}" data-allocated="{{ r.allocated }}" data-used="{{ r.used }}">
+          <td>
+            <div class="cell-user">
+              <span class="mini-avatar" style="background: var(--brand);">{{ r.user_name[0] }}</span>
+              <span class="name" style="font-weight: 600; color: var(--ink-1);">{{ r.user_name }}</span>
+              <span class="uid" style="color: var(--ink-4); font-size: 12px;">{{ r.user_id }}</span>
+            </div>
+          </td>
+          <td style="color: var(--ink-2);">{{ r.department }}</td>
+          <td style="color: var(--ink-3);">{{ r.consumer_name }}{% if r.quota_rule_name != '—' %}<span class="rule-tag">{{ r.quota_rule_name }}</span>{% endif %}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-1);">{{ "{:,}".format(r.allocated) }}</td>
+          <td style="text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-1);">{{ "{:,}".format(r.used) }}</td>
+          <td>
+            <div class="usage-bar">
+              <div class="usage-bar-fill {% if r.over_threshold %}is-danger{% elif r.low_usage %}is-muted{% else %}is-ok{% endif %}" style="width: {{ r.rate_pct }}%;"></div>
+              <span class="usage-bar-label">{{ r.rate_pct }}%</span>
+            </div>
+          </td>
+          <td>
+            {% if r.over_threshold %}
+              <span class="suggest suggest-up">↑ 建议扩容</span>
+            {% elif r.low_usage %}
+              <span class="suggest suggest-down">↓ 使用偏低</span>
+            {% else %}
+              <span class="suggest suggest-normal">● 正常</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <button class="btn-edit-role" data-adjust="{{ r.user_id }}">调整配额</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="muted empty-state" style="padding: 40px; text-align: center;">
+            <div class="empty-icon">🗝️</div>
+            <div class="empty-title">本月暂无已分配密钥用户</div>
+            <div class="empty-sub">为员工分配 API Key 后，这里会按月展示其用量与配额占用情况。</div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total_rows > 0 %}
+  <div class="usage-pager">
+    <div class="pager-info">共 {{ total_rows }} 条 · 第 {{ page_num }} / {{ total_pages }} 页</div>
+    <div class="pager-btns">
+      <button class="pg-btn" type="button" data-page="1" {% if page_num <= 1 %}disabled{% endif %} title="首页">«</button>
+      <button class="pg-btn" type="button" data-page="{{ page_num - 1 }}" {% if page_num <= 1 %}disabled{% endif %} title="上一页">‹</button>
+      {% for p in range(1, total_pages + 1) %}
+      <button class="pg-btn {% if p == page_num %}is-current{% endif %}" type="button" data-page="{{ p }}">{{ p }}</button>
+      {% endfor %}
+      <button class="pg-btn" type="button" data-page="{{ page_num + 1 }}" {% if page_num >= total_pages %}disabled{% endif %} title="下一页">›</button>
+      <button class="pg-btn" type="button" data-page="{{ total_pages }}" {% if page_num >= total_pages %}disabled{% endif %} title="末页">»</button>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  (function () {
+    const BASE = '/admin/api-usage';
+    // 合并当前 URL 参数并跳转（统一承载 month / q / filter / page）
+    function go(overrides) {
+      const p = new URLSearchParams(location.search);
+      for (const [k, v] of Object.entries(overrides)) {
+        if (v === '' || v === null || v === undefined) p.delete(k);
+        else p.set(k, v);
+      }
+      const qs = p.toString();
+      location.href = BASE + (qs ? '?' + qs : '');
+    }
+    const curParams = new URLSearchParams(location.search);
+    const months = Array.from(document.querySelectorAll('#monthMenu .month-item'))
+      .map((i) => i.getAttribute('data-month'));
+
+    // ---- 自定义月份下拉 ----
+    const dd = document.getElementById('monthDropdown');
+    const trigger = document.getElementById('monthTrigger');
+    const menu = document.getElementById('monthMenu');
+    trigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = dd.classList.toggle('open');
+      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    menu?.querySelectorAll('.month-item').forEach((item) => {
+      item.addEventListener('click', () => go({ month: item.getAttribute('data-month'), page: 1 }));
+    });
+    document.addEventListener('click', (e) => {
+      if (dd && !dd.contains(e.target)) {
+        dd.classList.remove('open');
+        trigger?.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // ---- 上 / 下一月 ----
+    function goMonth(offset) {
+      const cur = curParams.get('month') || months[months.length - 1];
+      const idx = months.indexOf(cur);
+      const next = idx + offset;
+      if (next < 0 || next >= months.length) return;
+      go({ month: months[next], page: 1 });
+    }
+    document.getElementById('prevMonth')?.addEventListener('click', () => goMonth(-1));
+    document.getElementById('nextMonth')?.addEventListener('click', () => goMonth(1));
+
+    // ---- 高 / 低水位点击过滤 ----
+    document.querySelectorAll('[data-usage-filter]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        const f = el.getAttribute('data-usage-filter');
+        const cur = curParams.get('filter') || '';
+        go({ filter: cur === f ? '' : f, page: 1 });
+      });
+    });
+    document.getElementById('clearFilter')?.addEventListener('click', () => go({ filter: '', q: '', page: 1 }));
+
+    // ---- 姓名 / 工号搜索（输入防抖）----
+    const search = document.getElementById('usageSearch');
+    if (search) {
+      let t;
+      const fire = () => go({ q: search.value.trim(), page: 1 });
+      search.addEventListener('input', () => { clearTimeout(t); t = setTimeout(fire, 350); });
+      search.addEventListener('keydown', (e) => { if (e.key === 'Enter') { clearTimeout(t); fire(); } });
+    }
+
+    // ---- 分页 ----
+    document.querySelectorAll('.pg-btn[data-page]').forEach((b) => {
+      b.addEventListener('click', () => {
+        if (b.disabled) return;
+        go({ page: b.getAttribute('data-page') });
+      });
+    });
+
+    // ---- 调整配额弹窗 ----
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-adjust]');
+      if (!btn) return;
+      const tr = btn.closest('tr');
+      const userId = btn.getAttribute('data-adjust');
+      const month = tr.getAttribute('data-month');
+      const allocated = tr.getAttribute('data-allocated') || '0';
+      const used = tr.getAttribute('data-used') || '0';
+
+      const tpl = `
+        <div class="modal-head">
+          <h3>调整配额 · ${month}</h3>
+          <button class="modal-close" type="button" onclick="Modal.close()">×</button>
+        </div>
+        <div class="modal-section">
+          <div class="field">
+            <label>用户</label>
+            <input value="${userId}" readonly style="background: var(--bg-mute); color: var(--ink-3);">
+          </div>
+          <div class="field">
+            <label>月份</label>
+            <input value="${month}" readonly style="background: var(--bg-mute); color: var(--ink-3);">
+          </div>
+          <div class="field">
+            <label>分配额度（调整后用于计算使用率）</label>
+            <input id="allocInput" type="number" min="0" value="${allocated}">
+          </div>
+          <div class="field">
+            <label>已使用（可选，留空则不改动）</label>
+            <input id="usedInput" type="number" min="0" value="${used}">
+          </div>
+          <div class="field-hint" style="font-size: 12px; color: var(--ink-4);">
+            修改分配额度后，使用率会相应变化，便于据此重新规划配额。
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" type="button" onclick="Modal.close()">取消</button>
+          <button class="btn btn-dark" id="saveAllocBtn" type="button">保存</button>
+        </div>
+      `;
+      const m = Modal.open(tpl);
+
+      m.querySelector('#saveAllocBtn').addEventListener('click', async () => {
+        const newAlloc = parseInt(m.querySelector('#allocInput').value, 10);
+        const usedVal = m.querySelector('#usedInput').value.trim();
+        const newUsed = usedVal === '' ? null : parseInt(usedVal, 10);
+        if (isNaN(newAlloc) || newAlloc < 0) { toast('分配额度必须为非负整数', 'error'); return; }
+        if (newUsed !== null && (isNaN(newUsed) || newUsed < 0)) { toast('已使用必须为非负整数', 'error'); return; }
+
+        const fd = new URLSearchParams();
+        fd.set('user_id', userId);
+        fd.set('month', month);
+        fd.set('allocated', String(newAlloc));
+        if (newUsed !== null) fd.set('used', String(newUsed));
+
+        const saveBtn = m.querySelector('#saveAllocBtn');
+        saveBtn.disabled = true;
+        try {
+          const res = await fetch('/api/admin/api-usage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: fd.toString(),
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || '保存失败');
+          }
+          toast('配额已更新', 'success');
+          Modal.close();
+          setTimeout(() => location.reload(), 500);
+        } catch (err) {
+          toast(err.message || '保存失败', 'error');
+          saveBtn.disabled = false;
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

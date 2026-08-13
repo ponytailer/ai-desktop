@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..aliyun_aigw import list_consumers
+from ..aliyun_aigw import USE_MOCK, list_consumers
 from ..database import get_db
 from ..deps import ALL_ROLES, ROLE_KEY_ADMIN, ROLE_SKILLS_ADMIN, ROLE_SUPER_ADMIN, CurrentUser
 from ..models import (
@@ -22,6 +22,7 @@ from ..models import (
     ApiKey,
     Employee,
     Feedback,
+    KeyUsage,
     Skill,
     SkillVersion,
 )
@@ -186,6 +187,219 @@ def admin_key_reviews(request: Request, db: Session = Depends(get_db)):
             "is_super_admin": is_super_admin,
         },
     )
+
+
+# ---------- API Key 用量分析子页面 ----------
+
+def _month_list(n: int = 6) -> list[str]:
+    """最近 n 个自然月（含当月），升序，格式 YYYY-MM。"""
+    from datetime import datetime
+
+    today = datetime.utcnow()
+    months: list[str] = []
+    y, m = today.year, today.month
+    for _ in range(n):
+        months.append(f"{y:04d}-{m:02d}")
+        m -= 1
+        if m == 0:
+            m = 12
+            y -= 1
+    return list(reversed(months))
+
+
+@router.get("/admin/api-usage", response_class=HTMLResponse)
+def admin_api_usage(
+    request: Request,
+    month: str | None = None,
+    page: int = 1,
+    q: str = "",
+    filter: str | None = None,  # "over" | "low" | None
+    db: Session = Depends(get_db),
+):
+    """API Key 月度用量分析（仅超级管理员）。
+
+    展示「每个月已分配密钥的用户」的：分配额度、已使用、使用率，
+    便于后续根据使用情况调整配额。支持姓名搜索、高/低水位过滤与分页。
+    """
+    user: CurrentUser = request.state.current_user
+    if not user.has_role(ROLE_SUPER_ADMIN):
+        raise HTTPException(403, "无权限访问用量分析")
+
+    ctx = _common_ctx(db, request)
+    months = _month_list(6)
+    current = month or months[-1]
+
+    # 已分配密钥（同一用户可能有多条，按用户去重，取最新一条）
+    approved = (
+        db.query(ApiKey)
+        .filter(ApiKey.status == KEY_APPROVED)
+        .order_by(ApiKey.applicant_id, ApiKey.reviewed_at.desc().nullslast())
+        .all()
+    )
+    key_by_user: dict[str, ApiKey] = {}
+    for k in approved:
+        key_by_user.setdefault(k.applicant_id, k)
+
+    # 该月已有的用量记录
+    usage_by_user: dict[str, KeyUsage] = {
+        u.user_id: u
+        for u in db.query(KeyUsage).filter(KeyUsage.month == current).all()
+    }
+
+    rows = []
+    for uid, k in key_by_user.items():
+        rec = usage_by_user.get(uid)
+        if rec is not None:
+            allocated = rec.allocated
+            used = rec.used
+            dept = rec.department or "—"
+            is_demo = rec.is_demo
+        else:
+            # 有密钥但本月暂无用量记录：以默认额度占位，已用计 0
+            allocated = 1000
+            used = 0
+            dept = "—"
+            is_demo = False
+        rate = (used / allocated) if allocated > 0 else 0.0
+        rate_pct = int(round(min(rate, 1.0) * 100))
+        rows.append(
+            {
+                "user_id": uid,
+                "user_name": k.applicant_name or uid,
+                "department": dept,
+                "consumer_name": k.consumer_name or "—",
+                "quota_rule_name": k.quota_rule_name or "—",
+                "allocated": allocated,
+                "used": used,
+                "rate": rate,
+                "rate_pct": rate_pct,
+                "over_threshold": rate >= 0.9,
+                "low_usage": allocated > 0 and rate <= 0.2,
+                "has_record": rec is not None,
+                "is_demo": is_demo,
+            }
+        )
+    # 排序：使用率高的在前，便于优先关注
+    rows.sort(key=lambda r: r["rate"], reverse=True)
+
+    # ── 月份总览（过滤前，供顶部计数卡）──
+    total_allocated = sum(r["allocated"] for r in rows)
+    total_used = sum(r["used"] for r in rows)
+    avg_rate = (total_used / total_allocated) if total_allocated > 0 else 0.0
+    user_count = len(rows)
+    over_count = sum(1 for r in rows if r["over_threshold"])
+    low_count = sum(1 for r in rows if r["low_usage"])
+
+    # ── 应用搜索 + 高/低水位过滤 ──
+    q_norm = (q or "").strip()
+    if q_norm:
+        ql = q_norm.lower()
+        rows = [
+            r for r in rows
+            if ql in (r["user_name"] or "").lower()
+            or ql in (r["user_id"] or "").lower()
+        ]
+    if filter == "over":
+        rows = [r for r in rows if r["over_threshold"]]
+    elif filter == "low":
+        rows = [r for r in rows if r["low_usage"]]
+
+    # ── 分页（每页 10 条）──
+    page_size = 10
+    total_rows = len(rows)
+    total_pages = max(1, (total_rows + page_size - 1) // page_size)
+    if page < 1:
+        page = 1
+    if page > total_pages:
+        page = total_pages
+    start = (page - 1) * page_size
+    page_rows = rows[start : start + page_size]
+
+    return templates.TemplateResponse(
+        request,
+        "admin_api_usage.html",
+        {
+            **ctx,
+            "page": "admin",
+            "admin_subpage": "api_usage",
+            "months": months,
+            "current_month": current,
+            "rows": page_rows,
+            "summary": {
+                "user_count": user_count,
+                "total_allocated": total_allocated,
+                "total_used": total_used,
+                "avg_rate": int(round(avg_rate * 100)),
+                "over_count": over_count,
+                "low_count": low_count,
+            },
+            "page_num": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "total_rows": total_rows,
+            "q": q_norm,
+            "active_filter": filter or "",
+            "use_mock": USE_MOCK,
+        },
+    )
+
+
+@router.post("/api/admin/api-usage")
+def api_update_api_usage(
+    request: Request,
+    user_id: str = Form(...),
+    month: str = Form(...),
+    allocated: int = Form(...),
+    used: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    """调整某用户某月的分配额度（或用量），便于后续配额调整。
+
+    记录不存在时按该用户最新已分配密钥自动补全后新建。
+    """
+    user: CurrentUser = request.state.current_user
+    if not user.has_role(ROLE_SUPER_ADMIN):
+        raise HTTPException(403, "无权限访问用量分析")
+    if allocated < 0 or (used is not None and used < 0):
+        raise HTTPException(400, "额度 / 用量不能为负")
+
+    uid = user_id.strip()
+    month = month.strip()
+    if not uid or not month:
+        raise HTTPException(400, "user_id 与 month 均不能为空")
+
+    rec = (
+        db.query(KeyUsage)
+        .filter(KeyUsage.user_id == uid, KeyUsage.month == month)
+        .first()
+    )
+    if rec is None:
+        k = (
+            db.query(ApiKey)
+            .filter(ApiKey.applicant_id == uid, ApiKey.status == KEY_APPROVED)
+            .order_by(ApiKey.reviewed_at.desc().nullslast())
+            .first()
+        )
+        rec = KeyUsage(
+            user_id=uid,
+            user_name=k.applicant_name if k else uid,
+            department="—",
+            month=month,
+        )
+        db.add(rec)
+    rec.allocated = allocated
+    if used is not None:
+        rec.used = used
+    rec.is_demo = False  # 人工调整后视为真实录入
+    db.commit()
+    return {
+        "ok": True,
+        "user_id": uid,
+        "month": month,
+        "allocated": rec.allocated,
+        "used": rec.used,
+        "rate_pct": rec.rate_pct,
+    }
 
 
 # ---------- API ----------

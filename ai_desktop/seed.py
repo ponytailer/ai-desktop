@@ -14,13 +14,16 @@ from .database import SessionLocal
 from .deps import CURRENT_USER  # 当前登录用户，对应截图中的「管理员 48890023」
 from .models import (
     CATEGORY_OPTIONS,
+    KEY_APPROVED,
     SCOPE_DEPARTMENT,
     SCOPE_PUBLIC,
     STATUS_DRAFT,
     STATUS_PENDING,
     STATUS_PUBLISHED,
     STATUS_REJECTED,
+    ApiKey,
     Category,
+    KeyUsage,
     Skill,
     SkillVersion,
 )
@@ -334,6 +337,120 @@ def seed_if_empty() -> None:
             note="未引入所需的写入频控；下次版本请增加。",
         )
 
+        db.commit()
+    finally:
+        db.close()
+
+
+# --------- API Key 月度用量演示种子 ---------
+# 仅当「没有任何已分配密钥」时插入，避免污染真实部署数据。
+# 用于驱动管理后台「API 用量分析」模块（网关当前为 mock 模式）。
+
+_USAGE_DEMO_USERS = [
+    # (工号, 姓名, 部门, 月度分配额度, 负载系数)
+    ("3001", "李航", "研发平台", 2000, 0.95),
+    ("3002", "王敏", "数据智能", 5000, 0.62),
+    ("3003", "张涛", "市场中心", 3000, 0.15),
+    ("3004", "陈静", "客户成功", 1500, 0.48),
+    ("3005", "刘洋", "安全工程", 1000, 0.33),
+    ("3006", "赵磊", "总经办", 4000, 0.78),
+]
+
+# 真实存在的消费组 / 配额规则（与 aliyun_aigw mock 保持一致），
+# 演示密钥将轮流绑定到这些真实对象，使用量页的「消费组 / 配额」列与系统现有数据关联。
+_USAGE_REAL_CONSUMERS = [
+    ("cs-mock-001", "demo-consumer"),
+    ("cs-mock-002", "team-alpha"),
+]
+_USAGE_REAL_QUOTA_RULES = [
+    ("qr-mock-001", "default-token"),
+    ("qr-mock-002", "team-credit-weekly"),
+]
+
+
+def _last_n_months(n: int) -> list[str]:
+    """返回最近 n 个自然月（含当月），格式 YYYY-MM，升序。"""
+    today = datetime.utcnow()
+    months: list[str] = []
+    y, m = today.year, today.month
+    for _ in range(n):
+        months.append(f"{y:04d}-{m:02d}")
+        m -= 1
+        if m == 0:
+            m = 12
+            y -= 1
+    return list(reversed(months))
+
+
+def seed_api_usage_if_empty() -> None:
+    """若「已分配密钥」还没有任何用量快照，则把演示用量补上。
+
+    幂等：
+    - 已有任何 key_usage 记录时直接跳过（视为已有人工/真实数据）；
+    - 否则为当前所有已分配密钥生成近 6 个月演示用量（网关 mock 模式）。
+    演示用户（3001-3006）若尚不存在，会一并生成对应的已分配密钥。
+    """
+    db = SessionLocal()
+    try:
+        if db.query(KeyUsage).first() is not None:
+            return
+
+        months = _last_n_months(6)
+        base_time = datetime.utcnow() - __import__("datetime").timedelta(days=180)
+
+        # 当前已分配密钥（按用户去重）
+        approved = (
+            db.query(ApiKey)
+            .filter(ApiKey.status == KEY_APPROVED)
+            .order_by(ApiKey.applicant_id, ApiKey.reviewed_at.desc().nullslast())
+            .all()
+        )
+        key_by_user: dict[str, ApiKey] = {}
+        for k in approved:
+            key_by_user.setdefault(k.applicant_id, k)
+
+        # 为尚未存在的演示用户创建已分配密钥
+        demo_map = {u[0]: u for u in _USAGE_DEMO_USERS}
+        for idx, (uid, (_, name, dept, alloc, _load)) in enumerate(demo_map.items()):
+            if uid not in key_by_user:
+                # 轮流绑定到真实存在的消费组 / 配额规则
+                consumer_id, consumer_name = _USAGE_REAL_CONSUMERS[idx % len(_USAGE_REAL_CONSUMERS)]
+                quota_rule_id, quota_rule_name = _USAGE_REAL_QUOTA_RULES[idx % len(_USAGE_REAL_QUOTA_RULES)]
+                key = ApiKey(
+                    applicant_id=uid,
+                    applicant_name=name,
+                    purpose="演示用密钥（网关 mock 模式自动生成）",
+                    status=KEY_APPROVED,
+                    api_key_value="sk-" + __import__("secrets").token_hex(16),
+                    consumer_id=consumer_id,
+                    consumer_name=consumer_name,
+                    quota_rule_id=quota_rule_id,
+                    quota_rule_name=quota_rule_name,
+                    reviewed_by=CURRENT_USER.name,
+                    reviewed_at=base_time,
+                )
+                db.add(key)
+                db.flush()
+                key_by_user[uid] = key
+
+        # 生成近 6 个月演示用量
+        for uid, (_, name, dept, alloc, load) in demo_map.items():
+            for mi, month in enumerate(months):
+                factor = load * (0.82 + 0.06 * mi)
+                used = int(alloc * factor)
+                if uid == "3001" and mi == len(months) - 1:
+                    used = int(alloc * 0.97)
+                db.add(
+                    KeyUsage(
+                        user_id=uid,
+                        user_name=name,
+                        department=dept,
+                        month=month,
+                        allocated=alloc,
+                        used=used,
+                        is_demo=True,
+                    )
+                )
         db.commit()
     finally:
         db.close()

@@ -28,7 +28,6 @@
   </div>
 
   <section data-tab-panel="key-pending">
-    {% if pending_review %}
     <table class="review-table">
       <thead>
         <tr>
@@ -54,13 +53,14 @@
             <button class="btn-key-reject" data-reject-key="{{ k.id }}">✕ 拒绝</button>
           </td>
         </tr>
+        {% else %}
+        <tr class="empty-row">
+          <td colspan="5" style="padding: 40px; text-align: center; color: var(--ink-4);">暂无待审核的密钥申请</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
     <div class="pagination" id="keyPendingPager"></div>
-    {% else %}
-    <div class="muted" style="padding: 40px; text-align: center;">暂无待审核的密钥申请</div>
-    {% endif %}
   </section>
 
   <section data-tab-panel="key-active" style="display:none;">

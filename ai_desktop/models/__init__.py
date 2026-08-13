@@ -31,6 +31,7 @@ from .constants import (
 )
 from .employee import Employee
 from .feedback import Feedback
+from .key_usage import KeyUsage
 from .skill import Skill, SkillVersion
 from .todo_item import TodoItem
 
@@ -54,4 +55,5 @@ __all__ = [
     "Employee",
     "Feedback",
     "TodoItem",
+    "KeyUsage",
 ]

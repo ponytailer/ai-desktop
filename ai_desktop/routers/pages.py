@@ -112,11 +112,14 @@ def my_uploads(request: Request, db: Session = Depends(get_db)):
         .all()
     )
 
+    # 统计口径：以「技能」为单位（与卡片一致），而非版本数。
+    # 全部 = 技能数；各状态 = 拥有至少一个对应状态版本的技能数；
+    # 已发布 = 拥有至少一个「已发布」版本的技能数。
     counts = {
-        "all": len(versions),
-        "pending": sum(1 for v in versions if v.status == STATUS_PENDING),
-        "draft": sum(1 for v in versions if v.status == "draft"),
-        "approved": sum(1 for v in versions if v.status == STATUS_PUBLISHED),
+        "all": 0,
+        "pending": 0,
+        "draft": 0,
+        "approved": 0,
     }
 
     # 按 Skill 分组：卡片以「技能」为单位，点击卡片进入查看该技能的版本历史。
@@ -157,6 +160,17 @@ def my_uploads(request: Request, db: Session = Depends(get_db)):
         key=lambda g: (not g["has_published"], g["primary"].submitted_at),
         reverse=True,
     )
+
+    # 以「技能」为单位统计（卡片展示口径）
+    for g in groups:
+        counts["all"] += 1
+        vs = g["versions"]
+        if any(v.status == STATUS_PENDING for v in vs):
+            counts["pending"] += 1
+        if any(v.status == "draft" for v in vs):
+            counts["draft"] += 1
+        if g["has_published"]:
+            counts["approved"] += 1
 
     return templates.TemplateResponse(
         request,
