@@ -323,12 +323,12 @@
 
   // ---------- 事件委托 ----------
   document.addEventListener('click', (e) => {
-    const launch = e.target.closest('[data-launch]');
-    if (launch) {
+    // 删除按钮位于卡片内部，必须先于 data-launch 判定，否则会冒泡触发「启动」
+    const rm = e.target.closest('[data-qa-remove]');
+    if (rm) {
       e.preventDefault();
-      const idx = Number(launch.dataset.idx);
-      const item = list[idx];
-      if (item) tryLaunch(item);
+      e.stopPropagation();
+      removeAt(Number(rm.dataset.idx));
       return;
     }
     const addBtn = e.target.closest('[data-qa-add]');
@@ -337,11 +337,12 @@
       showAddModal();
       return;
     }
-    const rm = e.target.closest('[data-qa-remove]');
-    if (rm) {
+    const launch = e.target.closest('[data-launch]');
+    if (launch) {
       e.preventDefault();
-      e.stopPropagation();
-      removeAt(Number(rm.dataset.idx));
+      const idx = Number(launch.dataset.idx);
+      const item = list[idx];
+      if (item) tryLaunch(item);
       return;
     }
   });
