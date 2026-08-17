@@ -2520,6 +2520,291 @@ select.select:focus {
 .todo-composer-btn:hover { background: var(--brand-2); }
 .todo-composer-btn:active { transform: scale(0.97); }
 
+/* ---- Hero 轮播 ---- */
+.hero-carousel {
+  position: relative;
+  margin-bottom: 22px;
+  overflow: hidden;          /* 防止 slides 溢出到页面外 */
+}
+.hero-track {
+  display: flex;
+  align-items: stretch;
+  width: 100%;                /* 锁定轨道宽度，100% per slide 才能对齐 */
+  transition: transform .5s cubic-bezier(.4, 0, .2, 1);
+}
+.hero-slide { flex: 0 0 100%; min-width: 0; box-sizing: border-box; }
+.hero-carousel .todo-hero { margin-bottom: 0; }
+
+.hero-slide-banner {
+  border-radius: var(--radius-lg);
+  padding: 26px 34px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+.hero-banner-eyebrow {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  opacity: .92;
+}
+.hero-banner-body {
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 82%;
+}
+.hero-banner-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+  border: 1px solid rgba(255, 255, 255, .4);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .15s ease;
+}
+.hero-banner-btn:hover { background: rgba(255, 255, 255, .3); }
+
+.banner-accent-orange { background: linear-gradient(135deg, #EA580C, #F97316 60%, #FBBF24); }
+.banner-accent-green  { background: linear-gradient(135deg, #047857, #10B981 60%, #34D399); }
+.banner-accent-blue   { background: linear-gradient(135deg, #1D4ED8, #2563EB 60%, #38BDF8); }
+.banner-accent-purple { background: linear-gradient(135deg, #6D28D9, #7C3AED 60%, #A78BFA); }
+
+.hero-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: transparent;                 /* 默认透明 */
+  color: rgba(255, 255, 255, .35);         /* 字色也很淡，不抢戏 */
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  transition: background .15s ease, color .15s ease;
+  z-index: 2;
+}
+.hero-arrow:hover {
+  background: rgba(15, 23, 42, .55);
+  color: #fff;
+}
+.hero-prev { left: 12px; }
+.hero-next { right: 12px; }
+.hero-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+.hero-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(255, 255, 255, .5);
+  transition: all .2s ease;
+}
+.hero-dot.active { background: #fff; width: 20px; border-radius: 4px; }
+
+/* ---- 今日 AI 资讯 ---- */
+.ai-news {
+  background: var(--surface, #FBF9F3);
+  border: 1px solid var(--line-soft, #E8DFD0);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px 10px;
+  box-shadow: var(--shadow-1);
+  margin-bottom: 22px;
+}
+.ai-news-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.ai-news-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-serif, "Fraunces", serif);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--ink-1, #1B1916);
+}
+.ai-news-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent, #E8581C);
+  box-shadow: 0 0 0 4px var(--accent-soft, #FBE6D8);
+}
+.ai-news-date { font-size: 12px; color: var(--ink-4, #8A8278); }
+.ai-news-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ai-news-item { min-width: 0; }
+.ai-news-link {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background .15s ease;
+}
+.ai-news-link:hover { background: var(--bg-soft, #F1ECDF); }
+.ai-news-rank {
+  font-family: var(--font-serif, serif);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent, #E8581C);
+  text-align: center;
+  padding-top: 1px;
+}
+.ai-news-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ai-news-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-1, #1B1916);
+  line-height: 1.35;
+}
+.ai-news-title-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ai-news-badge {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  align-self: center;
+  letter-spacing: .02em;
+}
+.ai-news-badge-国内 {
+  color: #B45309;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+}
+.ai-news-badge-国外 {
+  color: #1D4ED8;
+  background: #DBEAFE;
+  border: 1px solid #BFDBFE;
+}
+.ai-news-sum {
+  font-size: 12.5px;
+  color: var(--ink-4, #8A8278);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ai-news-src {
+  font-size: 11.5px;
+  color: var(--ink-4, #8A8278);
+  white-space: nowrap;
+  align-self: center;
+}
+.ai-news-empty { margin: 4px 0; font-size: 13px; color: var(--ink-4, #8A8278); }
+
+/* ---- 首页轮播管理（后台） ---- */
+.banner-admin-card,
+.banner-admin-list {
+  background: var(--surface, #FBF9F3);
+  border: 1px solid var(--line-soft, #E8DFD0);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-1);
+  margin-bottom: 18px;
+}
+.banner-admin-h { font-size: 15px; font-weight: 700; margin: 0 0 14px; color: var(--ink-1, #1B1916); }
+.banner-form { display: flex; flex-direction: column; gap: 14px; }
+.banner-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink-2, #57534E); }
+.banner-field > span { font-weight: 600; }
+.banner-field .req { color: var(--accent-red, #DC2626); }
+.banner-field small { color: var(--ink-4, #8A8278); font-weight: 400; }
+.banner-field input,
+.banner-field textarea,
+.banner-field select {
+  font: inherit;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--line, #E2D9C8);
+  background: var(--bg, #fff);
+  color: var(--ink-1, #1B1916);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.banner-field input:focus,
+.banner-field textarea:focus,
+.banner-field select:focus {
+  border-color: var(--accent, #E8581C);
+  box-shadow: 0 0 0 3px var(--accent-soft, #FBE6D8);
+}
+.banner-field textarea { resize: vertical; }
+.banner-form-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.banner-form-row .banner-field { flex: 1 1 200px; }
+.banner-field-check { flex-direction: row; align-items: center; gap: 8px; flex: 0 0 auto; }
+.banner-field-check input { width: auto; }
+.banner-form-actions { display: flex; justify-content: flex-end; }
+.banner-table-wrap { overflow-x: auto; }
+.banner-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.banner-table th,
+.banner-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-soft, #EDE6D8);
+  vertical-align: top;
+}
+.banner-table th { font-size: 12px; color: var(--ink-4, #8A8278); font-weight: 600; }
+.banner-cell-title { font-weight: 600; color: var(--ink-1, #1B1916); }
+.banner-cell-content { color: var(--ink-2, #57534E); max-width: 440px; }
+.banner-row-off { opacity: .58; }
+.banner-link { color: var(--accent, #E8581C); text-decoration: none; }
+.banner-link:hover { text-decoration: underline; }
+.banner-actions { display: flex; gap: 8px; }
+.inline-form { display: inline; }
+.btn-mini {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line, #E2D9C8);
+  background: var(--bg, #fff);
+  color: var(--ink-1, #1B1916);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.btn-mini:hover { border-color: var(--accent, #E8581C); color: var(--accent, #E8581C); }
+.btn-mini-danger:hover { border-color: var(--accent-red, #DC2626); color: var(--accent-red, #DC2626); }
+
 /* ---- 看板双列 ---- */
 .todo-board {
   display: grid;

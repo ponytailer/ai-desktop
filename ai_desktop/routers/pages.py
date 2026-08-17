@@ -1,6 +1,7 @@
 """页面路由（HTML 渲染）。"""
 from __future__ import annotations
 
+import datetime as dt
 from collections import Counter
 from pathlib import Path
 
@@ -23,6 +24,8 @@ from ..models import (
     SkillVersion,
     TodoItem,
 )
+from ..services.ai_news import get_ai_news
+from ..services.banners import get_active_banner_slides
 
 router = APIRouter()
 
@@ -65,6 +68,9 @@ def index(request: Request, db: Session = Depends(get_db)):
             **ctx,
             "page": "home",
             "todos": items,
+            "today": dt.date.today().strftime("%Y-%m-%d"),
+            "ai_news": get_ai_news(db),
+            "banner_slides": get_active_banner_slides(db),
             "todo_counts": {
                 "total": len(items),
                 "done": sum(1 for i in items if i.done),

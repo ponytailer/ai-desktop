@@ -18,6 +18,11 @@
     <span>📊</span> API 用量
   </a>
   {% endif %}
+  {% if user and user.has_role('super_admin') %}
+  <a href="/admin/banners" class="{% if admin_subpage == 'banners' %}active{% endif %}">
+    <span>📣</span> 首页轮播
+  </a>
+  {% endif %}
   {% if user and user.has_role('skills_admin') %}
   <a href="/admin/skill-reviews" class="{% if admin_subpage == 'skill_reviews' %}active{% endif %}">
     <span>🛡</span> Skills 审核

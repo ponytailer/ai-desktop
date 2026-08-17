@@ -5,27 +5,83 @@
 {% block content %}
 <div class="page page-home">
 
-  <!-- Hero：渐变背景 + 进度环 -->
-  <section class="todo-hero">
-    <div class="todo-hero-glow"></div>
-    <div class="todo-hero-main">
-      <div class="todo-hero-eyebrow">🗓️ 工作看板</div>
-      <h1 class="todo-hero-title">今天，专注做完这些事</h1>
-      <p class="todo-hero-sub">
-        一件一件来，划掉的感觉会上瘾。
-        <span class="todo-hero-date" id="todayDate"></span>
-      </p>
-    </div>
-    <div class="todo-hero-ring">
-      <svg viewBox="0 0 64 64" class="ring-svg" aria-hidden="true">
-        <circle class="ring-track" cx="32" cy="32" r="26"></circle>
-        <circle class="ring-value" cx="32" cy="32" r="26" id="ringValue"></circle>
-      </svg>
-      <div class="ring-text">
-        <b id="ringPercent">0%</b>
-        <span id="ringRatio">0 / 0</span>
+  <!-- Hero 轮播：默认「工作看板」常驻 + 管理员自定义公告 -->
+  <section class="hero-carousel" id="heroCarousel" aria-label="首页头条轮播">
+    <div class="hero-track" id="heroTrack">
+      <!-- 默认 slide：工作看板（固定，不可在后台删除） -->
+      <div class="hero-slide todo-hero">
+        <div class="todo-hero-glow"></div>
+        <div class="todo-hero-main">
+          <div class="todo-hero-eyebrow">🗓️ 工作看板</div>
+          <h1 class="todo-hero-title">今天，专注做完这些事</h1>
+          <p class="todo-hero-sub">
+            一件一件来，划掉的感觉会上瘾。
+            <span class="todo-hero-date" id="todayDate"></span>
+          </p>
+        </div>
+        <div class="todo-hero-ring">
+          <svg viewBox="0 0 64 64" class="ring-svg" aria-hidden="true">
+            <circle class="ring-track" cx="32" cy="32" r="26"></circle>
+            <circle class="ring-value" cx="32" cy="32" r="26" id="ringValue"></circle>
+          </svg>
+          <div class="ring-text">
+            <b id="ringPercent">0%</b>
+            <span id="ringRatio">0 / 0</span>
+          </div>
+        </div>
       </div>
+      <!-- 自定义 slide：管理员公告 -->
+      {% for b in banner_slides %}
+      <div class="hero-slide hero-slide-banner banner-accent-{{ b.accent }}">
+        <div class="hero-banner-eyebrow">📣 {{ b.title }}</div>
+        <p class="hero-banner-body">{{ b.content }}</p>
+        {% if b.link %}<a class="hero-banner-btn" href="{{ b.link }}" target="_blank" rel="noopener">{{ b.link_text or '查看详情' }} ↗</a>{% endif %}
+      </div>
+      {% endfor %}
     </div>
+    {% set total_slides = banner_slides | length + 1 %}
+    {% if total_slides > 1 %}
+    <button class="hero-arrow hero-prev" id="heroPrev" type="button" aria-label="上一张">‹</button>
+    <button class="hero-arrow hero-next" id="heroNext" type="button" aria-label="下一张">›</button>
+    <div class="hero-dots" id="heroDots">
+      {% for i in range(total_slides) %}
+      <button class="hero-dot{% if loop.index0 == 0 %} active{% endif %}" data-go="{{ loop.index0 }}" type="button" aria-label="第 {{ loop.index }} 张"></button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- 今日 AI 资讯：Top5（服务端按日缓存，含国内/国外，点击跳转原文） -->
+  <section class="ai-news" aria-label="今日 AI 资讯">
+    <header class="ai-news-head">
+      <div class="ai-news-title">
+        <span class="ai-news-dot"></span>今日 AI 资讯 · 国内外 Top 5
+      </div>
+      <span class="ai-news-date">{{ today }}</span>
+    </header>
+    {% if ai_news %}
+    <ul class="ai-news-list">
+      {% for n in ai_news %}
+      <li class="ai-news-item">
+        <a class="ai-news-link" href="{{ n.url }}" target="_blank" rel="noopener">
+          <span class="ai-news-rank">{{ loop.index }}</span>
+          <span class="ai-news-main">
+            <span class="ai-news-name">
+              {% if n.region == '国内' or n.region == '国外' %}
+              <span class="ai-news-badge ai-news-badge-{{ n.region }}">{{ n.region }}</span>
+              {% endif %}
+              <span class="ai-news-title-text">{{ n.title }}</span>
+            </span>
+            {% if n.summary %}<span class="ai-news-sum">{{ n.summary }}</span>{% endif %}
+          </span>
+          <span class="ai-news-src">{{ n.source }} ↗</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="ai-news-empty">今日资讯暂未抓取到（可能网络受限），稍后刷新即可。</p>
+    {% endif %}
   </section>
 
   <!-- 输入区 -->
@@ -346,6 +402,40 @@
       return;
     }
   });
+
+  // ---------- Hero 轮播 ----------
+  (function initHeroCarousel() {
+    const track = document.getElementById('heroTrack');
+    if (!track) return;
+    const slides = Array.from(track.children);
+    const total = slides.length;
+    if (total <= 1) return;
+
+    const dots = Array.from(document.querySelectorAll('#heroDots .hero-dot'));
+    const carousel = document.getElementById('heroCarousel');
+    const prevBtn = document.getElementById('heroPrev');
+    const nextBtn = document.getElementById('heroNext');
+    let idx = 0;
+    let timer = null;
+    const INTERVAL = 5000;
+
+    function go(n) {
+      idx = (n + total) % total;
+      track.style.transform = `translateX(${-idx * 100}%)`;
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    }
+    function start() { stop(); timer = setInterval(() => go(idx + 1), INTERVAL); }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    nextBtn?.addEventListener('click', () => { go(idx + 1); start(); });
+    prevBtn?.addEventListener('click', () => { go(idx - 1); start(); });
+    dots.forEach((d) => d.addEventListener('click', () => {
+      go(Number(d.dataset.go)); start();
+    }));
+    carousel?.addEventListener('mouseenter', stop);
+    carousel?.addEventListener('mouseleave', start);
+    start();
+  })();
 })();
 </script>
 {% endblock %}

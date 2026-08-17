@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -20,11 +20,18 @@ from ..models import (
     STATUS_PENDING,
     STATUS_PUBLISHED,
     ApiKey,
+    BannerSlide,
     Employee,
     Feedback,
     KeyUsage,
     Skill,
     SkillVersion,
+)
+from ..services.banners import (
+    create_banner_slide,
+    delete_banner_slide,
+    list_banner_slides,
+    toggle_banner_slide,
 )
 
 router = APIRouter()
@@ -479,3 +486,75 @@ def create_employee(
     db.commit()
 
     return {"ok": True, "id": emp.id, "name": emp.name}
+
+
+# =========================================================================== #
+# 首页轮播（自定义幻灯片）管理
+# =========================================================================== #
+@router.get("/admin/banners", response_class=HTMLResponse)
+def admin_banners(request: Request, db: Session = Depends(get_db)):
+    """首页轮播管理页（仅超级管理员）。"""
+    user: CurrentUser = request.state.current_user
+    if not user.has_role(ROLE_SUPER_ADMIN):
+        raise HTTPException(403, "无权限访问")
+
+    ctx = _common_ctx(db, request)
+    slides = list_banner_slides(db)
+    return templates.TemplateResponse(
+        request,
+        "admin_banners.html",
+        {
+            **ctx,
+            "page": "admin",
+            "admin_subpage": "banners",
+            "slides": slides,
+        },
+    )
+
+
+@router.post("/admin/banners")
+def admin_banners_create(
+    request: Request,
+    title: str = Form(...),
+    content: str = Form(...),
+    link: str = Form(""),
+    link_text: str = Form(""),
+    accent: str = Form("orange"),
+    is_active: bool = Form(True),
+    db: Session = Depends(get_db),
+):
+    user: CurrentUser = request.state.current_user
+    if not user.has_role(ROLE_SUPER_ADMIN):
+        raise HTTPException(403, "无权限操作")
+    if not title.strip() or not content.strip():
+        raise HTTPException(400, "标题与内容必填")
+    create_banner_slide(
+        db,
+        title=title,
+        content=content,
+        link=link,
+        link_text=link_text,
+        accent=accent,
+        is_active=is_active,
+    )
+    return RedirectResponse(url="/admin/banners", status_code=303)
+
+
+@router.post("/admin/banners/{slide_id}/delete")
+def admin_banners_delete(slide_id: int, request: Request,
+    db: Session = Depends(get_db)):
+    user: CurrentUser = request.state.current_user
+    if not user.has_role(ROLE_SUPER_ADMIN):
+        raise HTTPException(403, "无权限操作")
+    delete_banner_slide(db, slide_id)
+    return RedirectResponse(url="/admin/banners", status_code=303)
+
+
+@router.post("/admin/banners/{slide_id}/toggle")
+def admin_banners_toggle(slide_id: int, request: Request,
+    db: Session = Depends(get_db)):
+    user: CurrentUser = request.state.current_user
+    if not user.has_role(ROLE_SUPER_ADMIN):
+        raise HTTPException(403, "无权限操作")
+    toggle_banner_slide(db, slide_id)
+    return RedirectResponse(url="/admin/banners", status_code=303)

@@ -13,7 +13,9 @@
 """
 from __future__ import annotations
 
+from .ai_news_cache import AiNewsCache
 from .api_key import ApiKey
+from .banner_slide import BannerSlide
 from .category import Category
 from .constants import (
     CATEGORY_OPTIONS,
@@ -56,4 +58,6 @@ __all__ = [
     "Feedback",
     "TodoItem",
     "KeyUsage",
+    "AiNewsCache",
+    "BannerSlide",
 ]

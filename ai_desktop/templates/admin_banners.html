@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page">
+  {% include "partials/_admin_subnav.html" %}
+
+  <div class="hero-row">
+    <div class="hero-intro">
+      <h1 class="page-title">首页轮播管理</h1>
+      <p class="page-subtitle">管理首页顶部轮播的运营内容（如公司通知）。默认「工作看板」常驻，以下为可增删的自定义幻灯片。</p>
+    </div>
+  </div>
+
+  <!-- 新增表单 -->
+  <section class="banner-admin-card">
+    <h2 class="banner-admin-h">添加幻灯片</h2>
+    <form method="post" action="/admin/banners" class="banner-form">
+      <label class="banner-field banner-field-full">
+        <span>标题<span class="req">*</span></span>
+        <input name="title" required maxlength="120" placeholder="如：公司团建通知 / 系统升级预告">
+      </label>
+      <label class="banner-field banner-field-full">
+        <span>内容<span class="req">*</span></span>
+        <textarea name="content" required maxlength="500" rows="3" placeholder="通知正文，最多 500 字…"></textarea>
+      </label>
+      <div class="banner-form-row">
+        <label class="banner-field">
+          <span>跳转链接<small>（可选，仅 http/https）</small></span>
+          <input name="link" maxlength="300" placeholder="https://…">
+        </label>
+        <label class="banner-field">
+          <span>按钮文字<small>（可选）</small></span>
+          <input name="link_text" maxlength="60" placeholder="查看详情">
+        </label>
+        <label class="banner-field">
+          <span>主题色</span>
+          <select name="accent">
+            <option value="orange">橙</option>
+            <option value="green">绿</option>
+            <option value="blue">蓝</option>
+            <option value="purple">紫</option>
+          </select>
+        </label>
+        <label class="banner-field banner-field-check">
+          <input type="checkbox" name="is_active" checked>
+          <span>立即启用</span>
+        </label>
+      </div>
+      <div class="banner-form-actions">
+        <button class="btn btn-dark" type="submit">＋ 添加幻灯片</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 列表 -->
+  <section class="banner-admin-list">
+    <h2 class="banner-admin-h">已有幻灯片（{{ slides | length }}）</h2>
+    {% if slides %}
+    <div class="banner-table-wrap">
+      <table class="banner-table">
+        <thead>
+          <tr>
+            <th style="width: 70px;">状态</th>
+            <th style="width: 18%;">标题</th>
+            <th>内容</th>
+            <th style="width: 16%;">链接</th>
+            <th style="width: 140px;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in slides %}
+          <tr class="{% if not s.is_active %}banner-row-off{% endif %}">
+            <td>
+              {% if s.is_active %}
+              <span class="status-badge key-approved">启用</span>
+              {% else %}
+              <span class="status-badge key-pending">隐藏</span>
+              {% endif %}
+            </td>
+            <td class="banner-cell-title">{{ s.title }}</td>
+            <td class="banner-cell-content">{{ s.content }}</td>
+            <td>
+              {% if s.link %}
+              <a href="{{ s.link }}" target="_blank" rel="noopener" class="banner-link">{{ s.link_text or '链接' }} ↗</a>
+              {% else %}
+              <span class="muted">—</span>
+              {% endif %}
+            </td>
+            <td class="banner-actions">
+              <form method="post" action="/admin/banners/{{ s.id }}/toggle" class="inline-form">
+                <button class="btn-mini" type="submit">{% if s.is_active %}隐藏{% else %}启用{% endif %}</button>
+              </form>
+              <form method="post" action="/admin/banners/{{ s.id }}/delete" class="inline-form"
+                    onsubmit="return confirm('确定删除「{{ s.title }}」这张幻灯片？');">
+                <button class="btn-mini btn-mini-danger" type="submit">删除</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted" style="padding: 12px 0;">还没有自定义幻灯片，在上方添加一条试试。</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
