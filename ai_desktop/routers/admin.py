@@ -1,6 +1,7 @@
 """超级管理员路由：用户管理与角色分配。"""
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -32,6 +33,7 @@ from ..services.banners import (
     delete_banner_slide,
     list_banner_slides,
     toggle_banner_slide,
+    _parse_dt,
 )
 
 router = APIRouter()
@@ -508,6 +510,7 @@ def admin_banners(request: Request, db: Session = Depends(get_db)):
             "page": "admin",
             "admin_subpage": "banners",
             "slides": slides,
+            "now": datetime.utcnow(),
         },
     )
 
@@ -520,7 +523,9 @@ def admin_banners_create(
     link: str = Form(""),
     link_text: str = Form(""),
     accent: str = Form("orange"),
-    is_active: bool = Form(True),
+    validity: str = Form("permanent"),
+    start_at: str = Form(""),
+    end_at: str = Form(""),
     db: Session = Depends(get_db),
 ):
     user: CurrentUser = request.state.current_user
@@ -528,6 +533,17 @@ def admin_banners_create(
         raise HTTPException(403, "无权限操作")
     if not title.strip() or not content.strip():
         raise HTTPException(400, "标题与内容必填")
+
+    # 有效期：仅当选择「指定时间段」时才解析起止时间
+    s_start = s_end = None
+    if validity == "range":
+        s_start = _parse_dt(start_at)
+        s_end = _parse_dt(end_at)
+        if s_start is None or s_end is None:
+            raise HTTPException(400, "请完整填写有效的开始与结束时间")
+        if s_end < s_start:
+            raise HTTPException(400, "结束时间不能早于开始时间")
+
     create_banner_slide(
         db,
         title=title,
@@ -535,7 +551,9 @@ def admin_banners_create(
         link=link,
         link_text=link_text,
         accent=accent,
-        is_active=is_active,
+        is_active=True,
+        start_at=s_start,
+        end_at=s_end,
     )
     return RedirectResponse(url="/admin/banners", status_code=303)
 

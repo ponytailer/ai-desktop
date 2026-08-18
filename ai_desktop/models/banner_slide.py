@@ -35,6 +35,11 @@ class BannerSlide(Base):
     # 排序，越小越靠前
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
+    # 有效期（可选）：start_at / end_at 都为空 = 长期展示；
+    # 否则仅在 [start_at, end_at] 区间内（且 is_active）才在前台出现。
+    start_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    end_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow

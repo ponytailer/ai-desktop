@@ -837,6 +837,8 @@ h1.page-title {
 .status-badge.key-approved { color: var(--accent-green); background: #DCFCE7; }
 .status-badge.key-rejected { color: var(--accent-red);   background: #FEE2E2; }
 .status-badge.key-revoked  { color: #6B7280; background: var(--bg-mute); }
+.status-badge.key-idle     { color: #475569; background: #F1F5F9; }
+.status-badge.key-expired  { color: #6B7280; background: var(--bg-mute); }
 
 /* ---------- 密钥管理 ---------- */
 .key-cell {
@@ -1614,7 +1616,7 @@ h1.page-title {
 .field input:focus,
 .field textarea:focus { border-color: var(--accent-blue); }
 
-/* 原生 select 统一外观，与 .dropdown-trigger 视觉对齐（灰白风、圆角、自定义箭头） */
+/* 原生 select 统一外观，与 .field input 同白底、圆角、自定义箭头（全站唯一 select 样式） */
 .field select,
 select.select {
   width: 100%;
@@ -1624,7 +1626,7 @@ select.select {
   font: inherit;
   font-size: 14px;
   color: var(--ink-1);
-  background-color: var(--bg-mute);
+  background-color: var(--bg, #fff);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
   background-repeat: no-repeat;
   background-position: right 12px center;
@@ -2663,7 +2665,7 @@ select.select:focus {
 .ai-news-item { min-width: 0; }
 .ai-news-link {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: start;
   gap: 10px;
   padding: 10px 8px;
@@ -2727,12 +2729,6 @@ select.select:focus {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.ai-news-src {
-  font-size: 11.5px;
-  color: var(--ink-4, #8A8278);
-  white-space: nowrap;
-  align-self: center;
-}
 .ai-news-empty { margin: 4px 0; font-size: 13px; color: var(--ink-4, #8A8278); }
 
 /* ---- 首页轮播管理（后台） ---- */
@@ -2752,8 +2748,7 @@ select.select:focus {
 .banner-field .req { color: var(--accent-red, #DC2626); }
 .banner-field small { color: var(--ink-4, #8A8278); font-weight: 400; }
 .banner-field input,
-.banner-field textarea,
-.banner-field select {
+.banner-field textarea {
   font: inherit;
   padding: 9px 12px;
   border-radius: 9px;
@@ -2764,16 +2759,62 @@ select.select:focus {
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 .banner-field input:focus,
-.banner-field textarea:focus,
-.banner-field select:focus {
+.banner-field textarea:focus {
   border-color: var(--accent, #E8581C);
   box-shadow: 0 0 0 3px var(--accent-soft, #FBE6D8);
 }
+/* 下拉复用全站统一样式 .field select / select.select（app.css ~1617），不在此另写一套 */
 .banner-field textarea { resize: vertical; }
 .banner-form-row { display: flex; flex-wrap: wrap; gap: 14px; }
 .banner-form-row .banner-field { flex: 1 1 200px; }
-.banner-field-check { flex-direction: row; align-items: center; gap: 8px; flex: 0 0 auto; }
-.banner-field-check input { width: auto; }
+/* 日期/时间组件统一外观，与 .field input 对齐（白底、8px 圆角、focus 用 --accent-blue）。
+   全站新增 datetime-local / date / time 直接套此全局样式，禁止各模块另写一套 */
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-1);
+  outline: none;
+  cursor: text;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+input[type="datetime-local"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus {
+  border-color: var(--accent-blue);
+  background: #fff;
+}
+[data-theme="dark"] input[type="datetime-local"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="time"] {
+  background: var(--bg-soft);
+  color: var(--ink-1);
+  border-color: var(--line);
+}
+.banner-range-fields { display: none; flex-wrap: wrap; gap: 14px; flex: 1 1 100%; align-items: flex-end; }
+.banner-range-fields .banner-field { flex: 1 1 180px; }
+.banner-range-hint {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  font-size: 12px;
+  color: var(--ink-4, #8A8278);
+}
+.banner-range-hint-cap {
+  display: block;
+  height: 18px;
+  margin-bottom: 6px;
+}
+.banner-range-hint-text {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
 .banner-form-actions { display: flex; justify-content: flex-end; }
 .banner-table-wrap { overflow-x: auto; }
 .banner-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
@@ -2787,11 +2828,18 @@ select.select:focus {
 .banner-table th { font-size: 12px; color: var(--ink-4, #8A8278); font-weight: 600; }
 .banner-cell-title { font-weight: 600; color: var(--ink-1, #1B1916); }
 .banner-cell-content { color: var(--ink-2, #57534E); max-width: 440px; }
+.banner-cell-validity { font-size: 12.5px; color: var(--ink-2, #57534E); }
+.validity-range { display: flex; flex-direction: column; line-height: 1.5; }
+.validity-sep { color: var(--ink-4, #8A8278); font-size: 11px; }
 .banner-row-off { opacity: .58; }
+.banner-row-idle { background: color-mix(in srgb, var(--ink-4, #8A8278) 8%, transparent); }
 .banner-link { color: var(--accent, #E8581C); text-decoration: none; }
 .banner-link:hover { text-decoration: underline; }
-.banner-actions { display: flex; gap: 8px; }
-.inline-form { display: inline; }
+.tag { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.tag-muted { background: rgba(138, 130, 120, .16); color: var(--ink-4, #8A8278); }
+.tag-warn { background: rgba(232, 88, 28, .14); color: var(--accent, #E8581C); }
+.banner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.inline-form { display: inline; flex: 0 0 auto; }
 .btn-mini {
   padding: 5px 12px;
   border-radius: 8px;
@@ -2800,6 +2848,8 @@ select.select:focus {
   color: var(--ink-1, #1B1916);
   font-size: 12.5px;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all .15s ease;
 }
 .btn-mini:hover { border-color: var(--accent, #E8581C); color: var(--accent, #E8581C); }

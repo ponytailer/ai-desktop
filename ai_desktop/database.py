@@ -77,3 +77,10 @@ def _migrate_columns() -> None:
             if "due_at" not in existing:
                 conn.execute(text("ALTER TABLE todo_items ADD COLUMN due_at DATETIME"))
 
+        # banner_slide: start_at / end_at（有效期）
+        if "banner_slide" in inspector.get_table_names():
+            existing = {c["name"] for c in inspector.get_columns("banner_slide")}
+            for col in ("start_at", "end_at"):
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE banner_slide ADD COLUMN {col} DATETIME"))
+

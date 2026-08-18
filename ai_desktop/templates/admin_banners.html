@@ -34,17 +34,36 @@
         </label>
         <label class="banner-field">
           <span>主题色</span>
-          <select name="accent">
+          <select name="accent" class="select">
             <option value="orange">橙</option>
             <option value="green">绿</option>
             <option value="blue">蓝</option>
             <option value="purple">紫</option>
           </select>
         </label>
-        <label class="banner-field banner-field-check">
-          <input type="checkbox" name="is_active" checked>
-          <span>立即启用</span>
+      </div>
+      <div class="banner-form-row">
+        <label class="banner-field">
+          <span>有效期</span>
+          <select name="validity" id="bannerValidity" class="select">
+            <option value="permanent">长期</option>
+            <option value="range">指定时间段</option>
+          </select>
         </label>
+        <div class="banner-range-fields" id="bannerRangeFields">
+          <label class="banner-field">
+            <span>开始时间</span>
+            <input type="datetime-local" name="start_at" step="60">
+          </label>
+          <label class="banner-field">
+            <span>结束时间</span>
+            <input type="datetime-local" name="end_at" step="60">
+          </label>
+          <span class="banner-range-hint">
+            <span class="banner-range-hint-cap" aria-hidden="true"></span>
+            <span class="banner-range-hint-text">仅在所选时间段内于首页展示</span>
+          </span>
+        </div>
       </div>
       <div class="banner-form-actions">
         <button class="btn btn-dark" type="submit">＋ 添加幻灯片</button>
@@ -60,25 +79,45 @@
       <table class="banner-table">
         <thead>
           <tr>
-            <th style="width: 70px;">状态</th>
-            <th style="width: 18%;">标题</th>
+            <th style="width: 64px;">状态</th>
+            <th style="width: 16%;">标题</th>
+            <th style="width: 20%;">有效期</th>
             <th>内容</th>
-            <th style="width: 16%;">链接</th>
-            <th style="width: 140px;">操作</th>
+            <th style="width: 14%;">链接</th>
+            <th style="width: 132px;">操作</th>
           </tr>
         </thead>
         <tbody>
           {% for s in slides %}
-          <tr class="{% if not s.is_active %}banner-row-off{% endif %}">
+          {% set expired = s.end_at is not none and now > s.end_at %}
+          {% set upcoming = s.start_at is not none and now < s.start_at %}
+          <tr class="{% if not s.is_active %}banner-row-off{% elif expired or upcoming %}banner-row-idle{% endif %}">
             <td>
-              {% if s.is_active %}
-              <span class="status-badge key-approved">启用</span>
-              {% else %}
+              {% if not s.is_active %}
               <span class="status-badge key-pending">隐藏</span>
+              {% elif upcoming %}
+              <span class="status-badge key-idle">未启用</span>
+              {% elif expired %}
+              <span class="status-badge key-expired">已过期</span>
+              {% else %}
+              <span class="status-badge key-approved">启用</span>
               {% endif %}
             </td>
             <td class="banner-cell-title">{{ s.title }}</td>
-            <td class="banner-cell-content">{{ s.content }}</td>
+            <td class="banner-cell-validity">
+              {% if s.start_at or s.end_at %}
+                <div class="validity-range">
+                  <span>{{ s.start_at.strftime('%Y-%m-%d %H:%M') if s.start_at else '—' }}</span>
+                  <span class="validity-sep">~</span>
+                  <span>{{ s.end_at.strftime('%Y-%m-%d %H:%M') if s.end_at else '—' }}</span>
+                </div>
+                {% if expired %}<span class="tag tag-muted">已过期</span>
+                {% elif upcoming %}<span class="tag tag-warn">未开始</span>{% endif %}
+              {% else %}
+                <span class="muted">长期</span>
+              {% endif %}
+            </td>
+            <td class="banner-cell-content" title="{{ s.content }}">{% set c = s.content %}{% if c|length > 10 %}{{ c[:10] }}…{% else %}{{ c }}{% endif %}</td>
             <td>
               {% if s.link %}
               <a href="{{ s.link }}" target="_blank" rel="noopener" class="banner-link">{{ s.link_text or '链接' }} ↗</a>
@@ -105,4 +144,16 @@
     {% endif %}
   </section>
 </div>
+
+<script>
+  (function () {
+    var sel = document.getElementById('bannerValidity');
+    var box = document.getElementById('bannerRangeFields');
+    if (sel && box) {
+      var sync = function () { box.style.display = sel.value === 'range' ? 'flex' : 'none'; };
+      sel.addEventListener('change', sync);
+      sync();
+    }
+  })();
+</script>
 {% endblock %}
