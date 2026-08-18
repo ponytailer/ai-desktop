@@ -447,6 +447,9 @@ h1.page-title {
   color: var(--accent-blue);
   font-weight: 600;
 }
+/* 表单容器（.field / .banner-field）内的下拉撑满字段宽度 */
+.field .dropdown,
+.banner-field .dropdown { width: 100%; }
 
 /* ---------- 全部 Skills 标题行 ---------- */
 .section-head {
@@ -3347,6 +3350,7 @@ body, .navbar, .skill-card, .modal, .todo-item, .todo-col, .stat-row,
 [data-theme="dark"] select.select,
 [data-theme="dark"] .input,
 [data-theme="dark"] .dropdown-trigger,
+[data-theme="dark"] .dropdown.open .dropdown-trigger,
 [data-theme="dark"] .key-text { background: var(--bg-soft); color: var(--ink-1); }
 [data-theme="dark"] .skill-card:hover,
 [data-theme="dark"] .modal:hover { border-color: var(--accent); }
@@ -3809,42 +3813,7 @@ a.counter:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px;
 .counter.static:hover { background: transparent; }
 .counter .v { font-variant-numeric: tabular-nums; }
 
-/* 自定义月份下拉（替代原生 select） */
-.month-dropdown { position: relative; }
-.month-trigger {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 30px; padding: 0 10px;
-  border: 1px solid var(--border); background: var(--bg-card);
-  color: var(--ink-1); font-weight: 600; font-size: 14px;
-  border-radius: 7px; cursor: pointer;
-  font-variant-numeric: tabular-nums;
-  transition: background .15s ease, border-color .15s ease;
-}
-.month-trigger:hover { background: var(--bg-mute); }
-.month-caret { font-size: 10px; color: var(--ink-3); transform: translateY(1px); }
-.month-menu {
-  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
-  min-width: 132px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, .14);
-  padding: 6px;
-  display: none;
-  flex-direction: column;
-}
-.month-dropdown.open .month-menu { display: flex; }
-.month-item {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; padding: 8px 10px;
-  border: none; background: transparent;
-  color: var(--ink-1); font-size: 14px; text-align: left;
-  border-radius: 7px; cursor: pointer;
-  font-variant-numeric: tabular-nums;
-}
-.month-item:hover { background: var(--bg-mute); }
-.month-item.is-current { color: var(--brand); font-weight: 700; }
-.month-check { color: var(--brand); font-weight: 700; }
+/* 月份切换（前后按钮 + 统一 .dropdown 组件） */
 
 /* 搜索框 + 筛选 chip */
 .section-head .sh-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -3903,9 +3872,6 @@ a.counter:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px;
 [data-theme="dark"] .usage-summary.counters { border-color: rgba(255,255,255,.1); }
 [data-theme="dark"] a.counter:focus-visible { outline-color: var(--accent); }
 [data-theme="dark"] .counter.static:hover { background: transparent; }
-[data-theme="dark"] .month-menu { background: #1E2433; border-color: rgba(255,255,255,.12); box-shadow: 0 12px 32px rgba(0,0,0,.5); }
-[data-theme="dark"] .month-trigger:hover, [data-theme="dark"] .month-item:hover { background: rgba(255,255,255,.08); }
-[data-theme="dark"] .month-item.is-current, [data-theme="dark"] .month-check { color: var(--accent); }
 [data-theme="dark"] .filter-chip { background: rgba(91,108,255,.16); border-color: rgba(91,108,255,.6); }
 [data-theme="dark"] .usage-search { background: #1A2030; border-color: rgba(255,255,255,.28); }
 

@@ -34,21 +34,35 @@
         </label>
         <label class="banner-field">
           <span>主题色</span>
-          <select name="accent" class="select">
-            <option value="orange">橙</option>
-            <option value="green">绿</option>
-            <option value="blue">蓝</option>
-            <option value="purple">紫</option>
-          </select>
+          <div class="dropdown" style="width: 100%;">
+            <button class="dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+              <span class="dropdown-label">橙</span>
+              <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <input type="hidden" name="accent" value="orange">
+            <div class="dropdown-menu">
+              <div class="dropdown-item is-active" data-value="orange">橙</div>
+              <div class="dropdown-item" data-value="green">绿</div>
+              <div class="dropdown-item" data-value="blue">蓝</div>
+              <div class="dropdown-item" data-value="purple">紫</div>
+            </div>
+          </div>
         </label>
       </div>
       <div class="banner-form-row">
         <label class="banner-field">
           <span>有效期</span>
-          <select name="validity" id="bannerValidity" class="select">
-            <option value="permanent">长期</option>
-            <option value="range">指定时间段</option>
-          </select>
+          <div class="dropdown" style="width: 100%;">
+            <button class="dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+              <span class="dropdown-label">长期</span>
+              <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <input type="hidden" name="validity" id="bannerValidity" value="permanent">
+            <div class="dropdown-menu">
+              <div class="dropdown-item is-active" data-value="permanent">长期</div>
+              <div class="dropdown-item" data-value="range">指定时间段</div>
+            </div>
+          </div>
         </label>
         <div class="banner-range-fields" id="bannerRangeFields">
           <label class="banner-field">
@@ -147,11 +161,12 @@
 
 <script>
   (function () {
-    var sel = document.getElementById('bannerValidity');
+    // 有效期下拉（.dropdown 组件）通过隐藏域 name=validity 派发 change 联动
+    var hid = document.getElementById('bannerValidity');
     var box = document.getElementById('bannerRangeFields');
-    if (sel && box) {
-      var sync = function () { box.style.display = sel.value === 'range' ? 'flex' : 'none'; };
-      sel.addEventListener('change', sync);
+    if (hid && box) {
+      var sync = function () { box.style.display = hid.value === 'range' ? 'flex' : 'none'; };
+      hid.addEventListener('change', sync);
       sync();
     }
   })();

@@ -176,10 +176,17 @@
         </div>
         <div class="field">
           <label>配额维度</label>
-          <select name="quota_dimension" class="select">
-            <option value="token">token（按 Token 数）</option>
-            <option value="credit">credit（按 Credits）</option>
-          </select>
+          <div class="dropdown" style="width: 100%;">
+            <button class="dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+              <span class="dropdown-label">token（按 Token 数）</span>
+              <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <input type="hidden" name="quota_dimension" value="token">
+            <div class="dropdown-menu">
+              <div class="dropdown-item is-active" data-value="token">token（按 Token 数）</div>
+              <div class="dropdown-item" data-value="credit">credit（按 Credits）</div>
+            </div>
+          </div>
         </div>
         <div class="field">
           <label>周期额度 <span style="color: var(--danger);">*</span></label>
@@ -187,11 +194,18 @@
         </div>
         <div class="field">
           <label>周期类型</label>
-          <select name="period_type" class="select">
-            <option value="day">自然日</option>
-            <option value="week">自然周</option>
-            <option value="month">自然月</option>
-          </select>
+          <div class="dropdown" style="width: 100%;">
+            <button class="dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+              <span class="dropdown-label">自然日</span>
+              <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <input type="hidden" name="period_type" value="day">
+            <div class="dropdown-menu">
+              <div class="dropdown-item is-active" data-value="day">自然日</div>
+              <div class="dropdown-item" data-value="week">自然周</div>
+              <div class="dropdown-item" data-value="month">自然月</div>
+            </div>
+          </div>
         </div>
         <div class="field" style="display: flex; align-items: flex-end;">
           <button type="submit" class="btn btn-dark">＋ 创建规则</button>
@@ -403,18 +417,32 @@
           </div>
           <div class="field">
             <label>分配消费组</label>
-            <select name="consumer_id" class="select">
-              <option value="">（不绑定消费组）</option>
-              {% for c in consumers %}
-              <option value="{{ c.consumerId }}">{{ c.name }}（{{ c.consumerId }}）</option>
-              {% endfor %}
-            </select>
+            <div class="dropdown" id="consumerDd" style="width: 100%;">
+              <button class="dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+                <span class="dropdown-label">（不绑定消费组）</span>
+                <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <input type="hidden" name="consumer_id" value="">
+              <div class="dropdown-menu">
+                <div class="dropdown-item is-active" data-value="">（不绑定消费组）</div>
+                {% for c in consumers %}
+                <div class="dropdown-item" data-value="{{ c.consumerId }}">{{ c.name }}（{{ c.consumerId }}）</div>
+                {% endfor %}
+              </div>
+            </div>
           </div>
           <div class="field">
             <label>配额规则</label>
-            <select name="quota_rule_id" class="select quota-rule-select">
-              <option value="">（不绑定配额规则）</option>
-            </select>
+            <div class="dropdown" id="quotaRuleDd" style="width: 100%;">
+              <button class="dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+                <span class="dropdown-label">（不绑定配额规则）</span>
+                <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <input type="hidden" name="quota_rule_id" value="">
+              <div class="dropdown-menu">
+                <div class="dropdown-item is-active" data-value="">（不绑定配额规则）</div>
+              </div>
+            </div>
           </div>
           <div class="field">
             <label>审核备注</label>
@@ -428,20 +456,23 @@
       </form>
     `;
     const m = Modal.open(tpl);
-    // 填充配额规则下拉
+    // 填充配额规则下拉（.dropdown 组件：先填充 items 再初始化）
     try {
       const qr = await fetch('/api/aigw/quota-rules', { headers: { 'Accept': 'application/json' } });
       if (qr.ok) {
         const qj = await qr.json();
-        const sel = m.querySelector('select[name="quota_rule_id"]');
+        const menu = m.querySelector('#quotaRuleDd .dropdown-menu');
         (qj.items || []).forEach((r) => {
-          const o = document.createElement('option');
-          o.value = r.ruleId;
-          o.textContent = `${r.ruleName}（${r.quotaDimension} · 额度 ${r.quotaLimit}）`;
-          sel.appendChild(o);
+          const it = document.createElement('div');
+          it.className = 'dropdown-item';
+          it.dataset.value = r.ruleId;
+          it.textContent = `${r.ruleName}（${r.quotaDimension} · 额度 ${r.quotaLimit}）`;
+          menu.appendChild(it);
         });
       }
     } catch (_) { /* 配额下拉留空即可 */ }
+    initDropdown(m.querySelector('#consumerDd'));
+    initDropdown(m.querySelector('#quotaRuleDd'));
     m.querySelector('form').addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const fd = new FormData(ev.currentTarget);
@@ -814,7 +845,7 @@
       if (res.ok) rules = (await res.json()).items || [];
     } catch (_) { /* 忽略，下拉留空 */ }
     const opts = (rules || []).map((r) =>
-      `<option value="${r.ruleId}">${r.ruleName}（${r.quotaDimension} · 额度 ${r.quotaLimit}）</option>`
+      `<div class="dropdown-item" data-value="${r.ruleId}">${r.ruleName}（${r.quotaDimension} · 额度 ${r.quotaLimit}）</div>`
     ).join('');
     const tpl = `
       <div class="modal-head"><h3>批量修改组内配额</h3><button class="modal-close">×</button></div>
@@ -826,10 +857,17 @@
           </div>
           <div class="field">
             <label>目标配额规则 <span style="color: var(--accent-red);">*</span></label>
-            <select name="rule_id" class="select" required>
-              <option value="">请选择配额规则</option>
-              ${opts}
-            </select>
+            <div class="dropdown" id="batchRuleDd" style="width: 100%;">
+              <button class="dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+                <span class="dropdown-label">请选择配额规则</span>
+                <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <input type="hidden" name="rule_id" value="">
+              <div class="dropdown-menu">
+                <div class="dropdown-item is-active" data-value="">请选择配额规则</div>
+                ${opts}
+              </div>
+            </div>
           </div>
           <div class="field">
             <label>新额度（可选，留空=仅绑定不改动额度）</label>
@@ -846,13 +884,14 @@
         </div>
       </form>`;
     const m = Modal.open(tpl);
+    initDropdown(m.querySelector('#batchRuleDd'));
     m.querySelector('form').addEventListener('submit', async (ev2) => {
       ev2.preventDefault();
       const f = new FormData(ev2.currentTarget);
       const ruleId = (f.get('rule_id') || '').toString();
       if (!ruleId) { toast('请选择配额规则', 'error'); return; }
-      const ruleName = [...ev2.currentTarget.querySelectorAll('select[name="rule_id"] option')]
-        .find((o) => o.value === ruleId)?.textContent?.split('（')[0] || ruleId;
+      const ruleName = [...m.querySelectorAll('#batchRuleDd .dropdown-item')]
+        .find((i) => i.dataset.value === ruleId)?.textContent?.split('（')[0] || ruleId;
       const out = new FormData();
       out.set('rule_id', ruleId);
       out.set('rule_name', ruleName);

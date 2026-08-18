@@ -12,16 +12,14 @@
     <div class="hero-actions">
       <div class="month-switch" id="monthSwitch">
         <button class="ms-btn" id="prevMonth" type="button" aria-label="上一月">‹</button>
-        <div class="month-dropdown" id="monthDropdown">
-          <button class="month-trigger" id="monthTrigger" type="button" aria-haspopup="true" aria-expanded="false">
-            <span class="month-current">{{ current_month }}</span>
-            <span class="month-caret">▾</span>
+        <div class="dropdown" id="monthDropdown" style="min-width: 150px;">
+          <button class="dropdown-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="dropdown-label">{{ current_month }}</span>
+            <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-          <div class="month-menu" id="monthMenu" role="menu">
+          <div class="dropdown-menu">
             {% for m in months %}
-            <button class="month-item {% if m == current_month %}is-current{% endif %}" type="button" role="menuitem" data-month="{{ m }}">
-              {{ m }}{% if m == current_month %}<span class="month-check">✓</span>{% endif %}
-            </button>
+            <div class="dropdown-item {% if m == current_month %}is-active{% endif %}" data-value="{{ m }}">{{ m }}</div>
             {% endfor %}
           </div>
         </div>
@@ -171,27 +169,11 @@
       location.href = BASE + (qs ? '?' + qs : '');
     }
     const curParams = new URLSearchParams(location.search);
-    const months = Array.from(document.querySelectorAll('#monthMenu .month-item'))
-      .map((i) => i.getAttribute('data-month'));
+    const months = Array.from(document.querySelectorAll('#monthDropdown .dropdown-item'))
+      .map((i) => i.getAttribute('data-value'));
 
-    // ---- 自定义月份下拉 ----
-    const dd = document.getElementById('monthDropdown');
-    const trigger = document.getElementById('monthTrigger');
-    const menu = document.getElementById('monthMenu');
-    trigger?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const open = dd.classList.toggle('open');
-      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-    menu?.querySelectorAll('.month-item').forEach((item) => {
-      item.addEventListener('click', () => go({ month: item.getAttribute('data-month'), page: 1 }));
-    });
-    document.addEventListener('click', (e) => {
-      if (dd && !dd.contains(e.target)) {
-        dd.classList.remove('open');
-        trigger?.setAttribute('aria-expanded', 'false');
-      }
-    });
+    // ---- 自定义月份下拉（统一 .dropdown 组件）----
+    initDropdown(document.getElementById('monthDropdown'), { onChange: (v) => go({ month: v, page: 1 }) });
 
     // ---- 上 / 下一月 ----
     function goMonth(offset) {

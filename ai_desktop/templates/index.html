@@ -66,38 +66,6 @@
 </div>
 
 <script>
-  /* ---- 自定义下拉组件 ---- */
-  function initDropdown(el, onChange) {
-    const trigger = el.querySelector('.dropdown-trigger');
-    const label = el.querySelector('.dropdown-label');
-    const items = el.querySelectorAll('.dropdown-item');
-    let currentValue = el.querySelector('.dropdown-item.is-active')?.dataset.value || '';
-
-    trigger.addEventListener('click', (e) => {
-      e.stopPropagation();
-      document.querySelectorAll('.dropdown.open').forEach(d => { if (d !== el) d.classList.remove('open'); });
-      el.classList.toggle('open');
-    });
-
-    items.forEach(item => {
-      item.addEventListener('click', () => {
-        items.forEach(i => i.classList.remove('is-active'));
-        item.classList.add('is-active');
-        label.textContent = item.textContent;
-        currentValue = item.dataset.value;
-        el.classList.remove('open');
-        onChange();
-      });
-    });
-
-    return { get value() { return currentValue; } };
-  }
-
-  /* 点击外部关闭下拉 */
-  document.addEventListener('click', () => {
-    document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
-  });
-
   (function () {
     const grid = document.getElementById('skillGrid');
     if (!grid) return;
