@@ -21,7 +21,6 @@ from ..models import (
     STATUS_PENDING,
     STATUS_PUBLISHED,
     ApiKey,
-    BannerSlide,
     Employee,
     Feedback,
     KeyUsage,
@@ -29,11 +28,11 @@ from ..models import (
     SkillVersion,
 )
 from ..services.banners import (
+    _parse_dt,
     create_banner_slide,
     delete_banner_slide,
     list_banner_slides,
     toggle_banner_slide,
-    _parse_dt,
 )
 
 router = APIRouter()

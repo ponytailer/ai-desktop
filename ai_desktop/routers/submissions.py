@@ -1,15 +1,13 @@
 """Skills 提交 / 上传 / 下载 API。"""
 from __future__ import annotations
 
-import os
 import re
 import shutil
 import zipfile
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, \
-    UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
@@ -22,7 +20,7 @@ from ..models import (
     STATUS_PUBLISHED,
     STATUS_REJECTED,
     Skill,
-    SkillVersion
+    SkillVersion,
 )
 
 router = APIRouter()
@@ -121,7 +119,6 @@ def _suggest_next_version(db: Session, skill_id: int,
 def _write_placeholder_zip(zip_path: Path, skill_name: str, version: str,
     summary: str) -> None:
     import io
-    import zipfile
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr(
